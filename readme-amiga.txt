@@ -1,4 +1,4 @@
-this is port of SDL 1.2.13 to amigaos 68k from Bernd Rösch
+this is port of SDL 1.2.13 to amigaos 68k 
 This use the directory structure of SDL so a port to newer versions is easy.
 The old amiga SDL 1.2.6 files are currently in the main tree, if maybe something must compare and fail under new versions. 
 
