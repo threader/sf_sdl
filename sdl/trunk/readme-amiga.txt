@@ -7,3 +7,9 @@ there are many fixes, timer and semaphore working correct, and faster speed.
 A HotKey is add CTRL+ALT+H.If press only every 2. second frame is draw to GFX Card.
 
 this give better playable results on slow amigas because a game that is written for 30 fps need now only transfer 15 fps to gfx card to work at correct speed.
+
+IMPORTANT: Use the new includes, this work too on old SDL 
+
+sources can download here
+
+http://amiga.svn.sourceforge.net/viewvc/amiga/
