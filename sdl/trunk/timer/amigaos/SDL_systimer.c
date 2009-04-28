@@ -154,38 +154,37 @@ wait_for_timer( tr, tv );
 delete_timer( tr );
 return( 0L );
 }
-
+struct timerequest * TimerIO_2;
+ struct MsgPort *TimerMP_2;
 gettimerbase()
 {
-    struct MsgPort *TimerMP;
-    struct timerequest * TimerIO;
     long error;
   //need only 1, because timer device cant remove
-        if (TimerMP = CreateMsgPort())
+        if (TimerMP_2 = CreateMsgPort())
     {
-    if (TimerIO = (struct timerequest *)
-                   CreateIORequest(TimerMP,sizeof(struct timerequest)) )
+    if (TimerIO_2 = (struct timerequest *)
+                   CreateIORequest(TimerMP_2,sizeof(struct timerequest)) )
         {
             /* Open with UNIT_VBLANK, but any unit can be used */
-        if (!(error=OpenDevice(TIMERNAME,UNIT_ECLOCK,(struct IORequest *)TimerIO,0L)))
+        if (!(error=OpenDevice(TIMERNAME,UNIT_MICROHZ,(struct IORequest *)TimerIO_2,0L)))
             {
             /* Issue the command and wait for it to finish, then get the reply */
 
-            TimerBase        = (struct Library *)TimerIO->tr_node.io_Device;
+            TimerBase        = (struct Library *)TimerIO_2->tr_node.io_Device;
             /* Close the timer device */
-            CloseDevice((struct IORequest *) TimerIO);
+            CloseDevice((struct IORequest *) TimerIO_2);
             }
         else
-            printf("\nError: Could not open timer device\n");
+            kprintf("\nError: Could not open timer device\n");
 
         /* Delete the IORequest structure */
-        DeleteIORequest(TimerIO);
+        DeleteIORequest(TimerIO_2);
         }
     else
-        printf("\nError: Could not create I/O structure\n");
+        kprintf("\nError: Could not create I/O structure\n");
 
     /* Delete the port */
-    DeleteMsgPort(TimerMP);
+    DeleteMsgPort(TimerMP_2);
     
   }
 }
@@ -206,19 +205,19 @@ Uint32 SDL_GetTicks (void)
 	struct timeval tv;
 	Uint32 ticks;
     if (!TimerBase)gettimerbase();
-    //GetSysTime(&tv);
-    efreq = ReadEClock(&time1);
-	eval = time1.ev_lo;
-	eval +=(time1.ev_hi << 32);
-	ticks = eval /(efreq/1000);
-	/*if(basetime.tv_micro > tv.tv_micro)
+    GetSysTime(&tv);
+    //efreq = ReadEClock(&time1);
+	//eval = time1.ev_lo;
+	//eval +=(time1.ev_hi << 32);
+	//ticks = eval /(efreq/1000);
+	if(basetime.tv_micro > tv.tv_micro)
 	{
 		tv.tv_secs --;
           
 		tv.tv_micro += 1000000;
 	}
 
-	ticks = ((tv.tv_secs - basetime.tv_secs) * 1000) + ((tv.tv_micro - basetime.tv_micro)/1000);*/
+	ticks = ((tv.tv_secs - basetime.tv_secs) * 1000) + ((tv.tv_micro - basetime.tv_micro)/1000);
     
 	return ticks;
 }
@@ -234,7 +233,7 @@ void SDL_Delay (Uint32 ms)
 		tv.tv_secs	= ms / 1000;
 		tv.tv_micro	= (ms % 1000) * 1000;
 
-	time_delay(&tv, UNIT_ECLOCK );
+	time_delay(&tv, UNIT_MICROHZ );
 }
 
 #include "SDL_thread.h" 
@@ -251,9 +250,9 @@ int RunTimer(void *unused)
 	unsigned long threadid;
 	D(bug("SYSTimer: Entering RunTimer loop..."));
     threadid = SDL_ThreadID();
-    SetTaskPri(threadid,22);   
+    SetTaskPri(threadid,4);   
 /* get a pointer to an initialized timer request block */
-tr = create_timer( UNIT_ECLOCK );
+tr = create_timer( UNIT_MICROHZ );
 
 /* any nonzero return says timedelay routine didn't work. */
 if (tr == NULL )
@@ -267,7 +266,7 @@ if (tr == NULL )
 			ULONG running = SDL_timer_running;
 
 			tv.tv_secs  = 0;
-			tv.tv_micro = 2000;
+			tv.tv_micro = 8000;
 
 			wait_for_timer( tr, &tv );
 			//time_delay(&tv, UNIT_MICROHZ );
@@ -309,6 +308,11 @@ void SDL_SYS_TimerQuit(void)
 		SDL_WaitThread(timer_thread, NULL);
 		timer_thread = NULL;
 	}
+	kprintf("SYS_TimerQuit\n");
+	
+	//CloseDevice((struct IORequest *) TimerIO_2);
+	//DeleteIORequest(TimerIO_2);
+	//DeleteMsgPort(TimerMP_2);
 }
 
 int SDL_SYS_StartTimer(void)
@@ -319,5 +323,6 @@ int SDL_SYS_StartTimer(void)
 
 void SDL_SYS_StopTimer(void)
 {
+	
 	return;
 }

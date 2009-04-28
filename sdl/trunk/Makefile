@@ -5,7 +5,7 @@ DEFINES= DEFINE=ENABLE_CYBERGRAPHICS DEFINE=inline=__inline DEFINE=ENABLE_AHI DE
 #INCLUDES= IDIR=../include
 CFLAGS = VERBOSE CPU=68040  CODE=FAR DATA=FAR
 #DEBUG=FULL
-GCCFLAGS = -I/usr/local/amiga/m68k-amigaos/sys-include/sdl/ -O3 -fomit-frame-pointer -m68040 -mnobitfield \
+GCCFLAGS = -I/usr/local/amiga/m68k-amigaos/include/sdl/ -O3 -fomit-frame-pointer -m68040 -mnobitfield \
 -DNO_AMIGADEBUG
 GLFLAGS = -DSHARED_LIB -DNO_AMIGADEBUG -lamiga
 

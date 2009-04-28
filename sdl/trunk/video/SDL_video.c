@@ -1,4 +1,4 @@
-/*  
+/* 
     SDL - Simple DirectMedia Layer
     Copyright (C) 1997-2006 Sam Lantinga
 
@@ -527,7 +527,6 @@ static void SDL_CreateShadowSurface(int depth)
 	} else {
 		Rmask = Gmask = Bmask = 0;
 	}
-	kprintf("shadow surface \n");
 	SDL_ShadowSurface = SDL_CreateRGBSurface(SDL_SWSURFACE,
 				SDL_VideoSurface->w, SDL_VideoSurface->h,
 						depth, Rmask, Gmask, Bmask, 0);
@@ -583,6 +582,7 @@ SDL_Surface * SDL_SetVideoMode (int width, int height, int bpp, Uint32 flags)
 	int video_h;
 	int video_bpp;
 	int is_opengl;
+	int flags2 = flags;
 	SDL_GrabMode saved_grab;
     
 	/* Start up the video driver, if necessary..
@@ -895,24 +895,31 @@ SDL_Surface * SDL_SetVideoMode (int width, int height, int bpp, Uint32 flags)
 	//			(SDL_VideoSurface->flags&SDL_HWSURFACE) &&
 	//			!(SDL_VideoSurface->flags&SDL_DOUBLEBUF))
 	//     ) ) 
-     	{
-         
+	     
+	  if  (!(SDL_VideoSurface->flags & SDL_OPENGL) &&
+	      !(flags2 & SDL_HWSURFACE))
+	  {
+        kprintf("Create Shadow surface\n");
+		 
 		SDL_CreateShadowSurface(mode->format->BitsPerPixel);
 		if ( SDL_ShadowSurface == NULL ) {
-			SDL_SetError("Couldn't create shadow surface");
-			return(NULL);
-		}
-		SDL_PublicSurface = SDL_ShadowSurface;
-	} 
-   /* else {
+				SDL_SetError("Couldn't create shadow surface");
+				return(NULL);
+		        }
+				SDL_PublicSurface = SDL_ShadowSurface;
+	   }
+		else 
+		{
+		kprintf("Using no Shadowsurface \n");
 		SDL_PublicSurface = SDL_VideoSurface;
-	}*/
+		}
+	 
 	video->info.vfmt = SDL_VideoSurface->format;
 	video->info.current_w = SDL_VideoSurface->w;
 	video->info.current_h = SDL_VideoSurface->h;
 
 	/* We're done! */
-	kprintf("surface depth %ld \n",SDL_PublicSurface->format->BitsPerPixel);
+	
 	return(SDL_PublicSurface);
 }
 
@@ -1125,26 +1132,26 @@ int SDL_Flip(SDL_Surface *screen)
 		if ( SHOULD_DRAWCURSOR(SDL_cursorstate) ) {
 			SDL_LockCursor();
 			SDL_DrawCursor(SDL_ShadowSurface);
-			SDL_LowerBlit(SDL_ShadowSurface, &rect,
-					SDL_VideoSurface, &rect);
+			//SDL_LowerBlit(SDL_ShadowSurface, &rect,   // debugger show blit is done twice 
+			//		SDL_VideoSurface, &rect);
 			SDL_EraseCursor(SDL_ShadowSurface);
 			SDL_UnlockCursor();
 		} else {
-			SDL_LowerBlit(SDL_ShadowSurface, &rect,
-					SDL_VideoSurface, &rect);
+			//SDL_LowerBlit(SDL_ShadowSurface, &rect,
+			//		SDL_VideoSurface, &rect);
 		}
 		if ( saved_colors ) {
 			pal->colors = saved_colors;
 		}
 
 		/* Fall through to video surface update */
-		screen = SDL_VideoSurface;
+		//screen = SDL_VideoSurface;
 	}
 	if ( (screen->flags & SDL_DOUBLEBUF) == SDL_DOUBLEBUF ) {
 		SDL_VideoDevice *this  = current_video;
 		return(video->FlipHWSurface(this, SDL_VideoSurface));
 	} else {
-		SDL_UpdateRect(screen, 0, 0, 0, 0);
+		SDL_UpdateRect(screen, 0, 0, 0, 0);           // only here it is blit 
 	}
 	return(0);
 }
@@ -1340,12 +1347,13 @@ int SDL_SetColors(SDL_Surface *screen, SDL_Color *colors, int firstcolor,
 void SDL_VideoQuit (void)
 {
 	SDL_Surface *ready_to_go;
-
+    
 	if ( current_video ) {
 		SDL_VideoDevice *video = current_video;
 		SDL_VideoDevice *this  = current_video;
 
 		/* Halt event processing before doing anything else */
+		
 		SDL_StopEventLoop();
 
 		/* Clean up allocated window manager items */

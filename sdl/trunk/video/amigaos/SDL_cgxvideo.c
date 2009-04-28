@@ -1,4 +1,4 @@
-/* 
+/*
     SDL - Simple DirectMedia Layer
     Copyright (C) 1997, 1998, 1999, 2000  Sam Lantinga
 
@@ -43,7 +43,7 @@ static char rcsid =
 */
 //#define FAKEDB
 #include "SDL_config.h" 
-
+#include <intuition/screens.h>
 //#include "SDL.h"
 //#include "SDL_error.h"
 //#include "SDL_timer.h"
@@ -257,7 +257,7 @@ static SDL_VideoDevice *CGX_CreateDevice(int devindex)
 	device->GetGamma = CGX_GetGamma;
 	device->SetGammaRamp = CGX_SetGammaRamp;
 	device->GetGammaRamp = NULL;
-#ifdef HAVE_OPENGL
+#ifdef SDL_VIDEO_OPENGL
 	device->GL_LoadLibrary = CGX_GL_LoadLibrary;
 	device->GL_GetProcAddress = CGX_GL_GetProcAddress;
 	device->GL_GetAttribute = CGX_GL_GetAttribute;
@@ -552,9 +552,10 @@ static int CGX_VideoInit(_THIS, SDL_PixelFormat *vformat)
 
 		if(okid!=INVALID_ID)
 		{
+			
 			GFX_Display=OpenScreenTags(NULL,
-									SA_Width,SDL_Display->Width,
-									SA_Height,SDL_Display->Height,
+									//SA_Width,SDL_Display->Width,
+									//SA_Height,SDL_Display->Height,
 									SA_Depth,bpp,SA_Quiet,TRUE,
 									SA_ShowTitle,FALSE,
 									SA_DisplayID,okid,
@@ -683,7 +684,9 @@ void CGX_DestroyWindow(_THIS, SDL_Surface *screen)
 		/* Destroy the output window */
 		if ( SDL_Window ) {
 			CloseWindow(SDL_Window);
+			if (SDL_Window_Background)CloseWindow(SDL_Window_Background);
 			SDL_Window=NULL;
+            SDL_Window_Background=NULL;
 		}
 
 		/* Free the colormap entries */
@@ -840,13 +843,33 @@ int CGX_CreateWindow(_THIS, SDL_Surface *screen,
 
 	if ( !SDL_windowid ) {
 			if( flags & SDL_FULLSCREEN )
-			{
-				SDL_Window = OpenWindowTags(NULL,WA_Width,w,WA_Height,h,
-											WA_Flags,WFLG_ACTIVATE|WFLG_RMBTRAP|WFLG_BORDERLESS|WFLG_BACKDROP|WFLG_REPORTMOUSE,
+			{ 
+				struct Screen * sc;
+				int left = (SDL_Display->Width - w) / 2;
+				int top = (SDL_Display->Height - h) / 2;
+				if (left < 0 )left = 0;
+		 		if (top  < 0 )top =0;
+				sc = SDL_Display;
+				//SetAPen(&sc->RastPort,1); // rest of display should be black
+				//RectFill(&sc->RastPort,0,0,w-1,h-1); 
+				SDL_Window_Background = OpenWindowTags(NULL,WA_Left,0,WA_Top,0, 
+											WA_Flags,WFLG_SIMPLE_REFRESH | WFLG_ACTIVATE|WFLG_RMBTRAP|WFLG_BORDERLESS|WFLG_BACKDROP|WFLG_REPORTMOUSE,
 											WA_IDCMP,IDCMP_RAWKEY|IDCMP_MOUSEBUTTONS|IDCMP_MOUSEMOVE,
 											WA_CustomScreen,(ULONG)SDL_Display,
 											TAG_DONE);
-
+				SetAPen(SDL_Window_Background->RPort,1); // rest of display should be black
+				RectFill(SDL_Window_Background->RPort,0,0,SDL_Window_Background->Width-1,SDL_Window_Background->Height); 
+				SDL_Window = OpenWindowTags(NULL,WA_Left,left,WA_Top,top,WA_Width,w,WA_Height,h, 
+											WA_Flags,WFLG_ACTIVATE|WFLG_RMBTRAP|WFLG_BORDERLESS | WFLG_REPORTMOUSE,
+											WA_IDCMP,IDCMP_RAWKEY|IDCMP_MOUSEBUTTONS|IDCMP_MOUSEMOVE,
+											WA_CustomScreen,(ULONG)SDL_Display,
+											TAG_DONE);
+                if (SDL_Window)
+				{
+				 
+                 
+				  //ChangeWindowBox(SDL_Window,left,top,w,h);
+				}
 				D(bug("Opening backdrop window %ldx%ld on display %lx!\n",w,h,SDL_Display));
 			}
 			else
@@ -925,6 +948,7 @@ int CGX_CreateWindow(_THIS, SDL_Surface *screen,
 
 	/* Make OpenGL Context if needed*/
 	if(flags & SDL_OPENGL) {
+		
 		if(this->gl_data->gl_active == 0) {
 			if(CGX_GL_Init(this) < 0)
 				return -1;
@@ -1034,20 +1058,31 @@ buildnewscreen:
 				CYBRBIDTG_NominalHeight,height,
 				CYBRBIDTG_Depth,bpp,
 				TAG_DONE);
+           
+
 
             GFX_Display=NULL;
 
 			D(bug("Opening screen...\n"));
-
+            int swidth,sheight;
 			if(okid!=INVALID_ID)
+			{
+				struct DimensionInfo dinfo;
+               
+                  int  result = GetDisplayInfoData(0,&dinfo,sizeof (struct DimensionInfo),DTAG_DIMS,okid);
+						if (result)
+						{
+                          swidth=dinfo.Nominal.MaxX;
+						  sheight=dinfo.Nominal.MaxY;
+						}
 				GFX_Display=OpenScreenTags(NULL,
-								SA_Width,width,
-								SA_Height,height,
+								//SA_Width,width,
+								//SA_Height,height,
 								SA_Quiet,TRUE,SA_ShowTitle,FALSE,
 								SA_Depth,bpp,
 								SA_DisplayID,okid,
 								TAG_DONE);
-
+			}
 			if(!GFX_Display) {
 				GFX_Display=SDL_Display;
 				flags &= ~SDL_FULLSCREEN;
@@ -1382,7 +1417,7 @@ static void CGX_VideoQuit(_THIS)
 	/* Shutdown everything that's still up */
 	/* The event thread should be done, so we can touch SDL_Display */
 	D(bug("CGX_VideoQuit\n"));
-
+    
 	if ( SDL_Display != NULL ) {
 		/* Clean up OpenGL */
 		if(this->gl_data->gl_active == 1) {

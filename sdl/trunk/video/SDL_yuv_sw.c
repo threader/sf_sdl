@@ -1173,7 +1173,7 @@ int SDL_DisplayYUV_SW(_THIS, SDL_Overlay *overlay, SDL_Rect *src, SDL_Rect *dst)
 	Uint8 *lum, *Cr, *Cb;
 	Uint8 *dstp;
 	int mod;
-
+    
 	swdata = overlay->hwdata;
 	stretch = 0;
 	scale_2x = 0;
@@ -1267,6 +1267,7 @@ int SDL_DisplayYUV_SW(_THIS, SDL_Overlay *overlay, SDL_Rect *src, SDL_Rect *dst)
 		SDL_UnlockSurface(display);
 	}
 	if ( stretch ) {
+		
 		display = swdata->display;
 		SDL_SoftStretch(swdata->stretch, src, display, dst);
 	}
