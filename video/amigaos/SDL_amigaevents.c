@@ -1,4 +1,4 @@
-/* 
+/*
     SDL - Simple DirectMedia Layer
     Copyright (C) 1997, 1998, 1999, 2000, 2001, 2002  Sam Lantinga
 
@@ -44,7 +44,7 @@ static char rcsid =
 
 /* The translation tables from an Amiga keysym to a SDL keysym */
 static SDLKey MISC_keymap[256];
-SDL_keysym *amiga_TranslateKey(int code, SDL_keysym *keysym);
+SDL_keysym *amiga_TranslateKey(int code, int qual, SDL_keysym *keysym);
 struct IOStdReq *ConReq=NULL;
 struct MsgPort *ConPort=NULL;
 
@@ -167,11 +167,14 @@ static int amiga_GetButton(int code)
 	}
 }
 
+int mousex;
+int mousey;
+
 static int amiga_DispatchEvent(_THIS,struct IntuiMessage *msg)
 {
 	int class=msg->Class,code=msg->Code;
 	int posted;
-
+    
 	posted = 0;
 	switch (class) {
 	    /* Gaining mouse coverage? */
@@ -204,10 +207,13 @@ static int amiga_DispatchEvent(_THIS,struct IntuiMessage *msg)
 #endif
 	    /* Mouse motion? */
 	    case IDCMP_MOUSEMOVE:
+            
 			if ( SDL_VideoSurface ) {
-				posted = SDL_PrivateMouseMotion(0, 0,
-						msg->MouseX-SDL_Window->BorderLeft,
-						msg->MouseY-SDL_Window->BorderTop);
+				//posted = SDL_PrivateMouseMotion(0, 0,
+				//		msg->MouseX-SDL_Window->BorderLeft,
+				//		msg->MouseY-SDL_Window->BorderTop);
+				mousex = msg->MouseX-SDL_Window->BorderLeft;
+				mousey = msg->MouseY-SDL_Window->BorderTop;
 			}
 	    	break;
 
@@ -244,7 +250,7 @@ static int amiga_DispatchEvent(_THIS,struct IntuiMessage *msg)
 		    {
 				SDL_keysym keysym;
 				posted = SDL_PrivateKeyboard(SDL_PRESSED,
-					amiga_TranslateKey(code, &keysym));
+					amiga_TranslateKey(code,msg->Qualifier, &keysym));
 		    }
 		    else
 		    {
@@ -257,7 +263,7 @@ static int amiga_DispatchEvent(_THIS,struct IntuiMessage *msg)
 /*			if ( ! X11_KeyRepeat(SDL_Display, &xevent) )  */
 
 				posted = SDL_PrivateKeyboard(SDL_RELEASED,
-					amiga_TranslateKey(code, &keysym));
+					amiga_TranslateKey(code,msg->Qualifier, &keysym));
 		    }
 		    break;
 	    /* Have we been iconified? */
@@ -337,13 +343,17 @@ void amiga_PumpEvents(_THIS)
 {
 	int pending;
 	struct IntuiMessage *m;
-
+	if ((!SDL_Window) || (!SDL_Window->UserPort))return 0;
+    mousex = -4; // to collect only the last mousepos
+	mousey = -4;
 	/* Keep processing pending events */
 	pending = 0;
 	while ( m=(struct IntuiMessage *)GetMsg(SDL_Window->UserPort) ) {
 		amiga_DispatchEvent(this,m);
 		++pending;
 	}
+	if (mousex != -4)
+		SDL_PrivateMouseMotion(0, 0,mousex,mousey);
 }
 
 void amiga_InitKeymap(void)
@@ -471,8 +481,9 @@ void amiga_InitKeymap(void)
 
 	MISC_keymap[95] = SDLK_HELP;
 }
-
-SDL_keysym *amiga_TranslateKey(int code, SDL_keysym *keysym)
+//#define OLDCODE
+#ifdef OLDCODE
+SDL_keysym *amiga_TranslateKey(int code, int qual,SDL_keysym *keysym)
 {
 	#ifdef STORMC4_WOS
 	static struct Library *KeymapBase=NULL; /* Linking failed in WOS version if ConsoleDevice was used */
@@ -483,7 +494,8 @@ SDL_keysym *amiga_TranslateKey(int code, SDL_keysym *keysym)
 	/* Get the raw keyboard scancode */
 	keysym->scancode = code;
 	keysym->sym = MISC_keymap[code];
-
+	unsigned long unicode;  
+    char buffer[5];
 #ifdef DEBUG_KEYS
 	fprintf(stderr, "Translating key 0x%.4x (%d)\n", xsym, xkey->keycode);
 #endif
@@ -519,7 +531,7 @@ SDL_keysym *amiga_TranslateKey(int code, SDL_keysym *keysym)
 			}
 			#endif
 		}
-
+	
 		#ifdef STORMC4_WOS
 		if(KeymapBase)
 		#else
@@ -528,7 +540,7 @@ SDL_keysym *amiga_TranslateKey(int code, SDL_keysym *keysym)
 		{
 			struct InputEvent event;
 			long actual;
-			char buffer[5];
+		
 
 			event.ie_Qualifier=0;
 			event.ie_Class=IECLASS_RAWKEY;
@@ -577,7 +589,98 @@ SDL_keysym *amiga_TranslateKey(int code, SDL_keysym *keysym)
 	}
 	return(keysym);
 }
+    
+	
+#else
+struct Library *KeymapBase;
+SDL_keysym *amiga_TranslateKey(int code, int qual, SDL_keysym *keysym)
+{
+	ULONG key, unicode;
+	WORD actual = -1;
+	SDLMod	mod;
 
+	D(bug("[SDL] amiga_TranslateKey()\n"));
+
+	/* Get the raw keyboard scancode */
+   
+		if(!KeymapBase)
+		{
+			KeymapBase=OpenLibrary("keymap.library", 0L);
+		}
+	keysym->scancode = code;
+	keysym->sym = MISC_keymap[code];
+	key = 0;
+
+	/* Get the translated SDL virtual keysym */
+	if (keysym->sym == SDLK_UNKNOWN)
+	{
+		struct InputEvent	ie;
+		UBYTE	buffer[4];
+        
+		qual &= ~(IEQUALIFIER_CONTROL|IEQUALIFIER_LALT|IEQUALIFIER_RALT);
+
+		ie.ie_Class				= IECLASS_RAWKEY;
+		ie.ie_SubClass			= 0;
+		ie.ie_Code				= code;
+		//ie.ie_Qualifier		  = SDL_TranslateUNICODE ? qual : qual & ~(IEQUALIFIER_LSHIFT|IEQUALIFIER_RSHIFT|IEQUALIFIER_CAPSLOCK);
+		ie.ie_Qualifier		= qual & ~(IEQUALIFIER_LSHIFT|IEQUALIFIER_RSHIFT|IEQUALIFIER_CAPSLOCK);
+		ie.ie_EventAddress	= NULL;
+ 
+		actual = MapRawKey(&ie, buffer, 4, NULL);
+
+		if (actual == 1)
+		{
+			key = *buffer;
+			keysym->sym = *buffer;
+		}
+	}
+
+	mod	= KMOD_NONE;
+
+	if (qual & IEQUALIFIER_LSHIFT)
+		mod |= KMOD_LSHIFT;
+	if (qual & IEQUALIFIER_RSHIFT)
+		mod |= KMOD_RSHIFT;
+	if (qual & IEQUALIFIER_CAPSLOCK)
+		mod |= KMOD_CAPS;
+	if (qual & IEQUALIFIER_CONTROL)
+		mod |= KMOD_LCTRL | KMOD_RCTRL;
+	if (qual & IEQUALIFIER_LALT)
+		mod |= KMOD_LALT;
+	if (qual & IEQUALIFIER_RALT)
+		mod |= KMOD_RALT;
+	if (qual & IEQUALIFIER_LCOMMAND)
+		mod |= KMOD_LMETA;
+	if (qual & IEQUALIFIER_RCOMMAND)
+		mod |= KMOD_RMETA;
+	if (qual & IEQUALIFIER_NUMERICPAD)
+		mod |= KMOD_NUM;
+
+	keysym->mod = mod;
+
+	/* unicode support */
+	unicode = 0;
+
+	if (SDL_TranslateUNICODE) 
+	{
+		//if (KeymapBase->lib_Version >= 51)
+		//{
+		//	unicode = ToUCS4(keysym->sym, NULL);
+		//}
+		//else
+		//{
+			unicode = keysym->sym;
+
+			if (unicode > 255)
+				unicode = 0;
+		//}
+	}
+
+	keysym->unicode = unicode;
+	
+	return(keysym);
+} 
+#endif
 void amiga_InitOSKeymap(_THIS)
 {
 	amiga_InitKeymap();

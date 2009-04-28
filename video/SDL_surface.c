@@ -564,7 +564,7 @@ int SDL_FillRect(SDL_Surface *dst, SDL_Rect *dstrect, Uint32 color)
 	SDL_VideoDevice *this  = current_video;
 	int x, y;
 	Uint8 *row;
-    //return 0;
+    
 	/* This function doesn't work on surfaces < 8 bpp */
 	if ( dst->format->BitsPerPixel < 8 ) {
 		switch(dst->format->BitsPerPixel) {

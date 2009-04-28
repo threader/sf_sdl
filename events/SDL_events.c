@@ -187,7 +187,9 @@ static int SDL_StartEventThread(Uint32 flags)
 
 static void SDL_StopEventThread(void)
 {
+	
 	SDL_EventQ.active = 0;
+	
 	if ( SDL_EventThread ) {
 		SDL_WaitThread(SDL_EventThread, NULL);
 		SDL_EventThread = NULL;
@@ -215,7 +217,7 @@ void SDL_StopEventLoop(void)
 	SDL_KeyboardQuit();
 	SDL_MouseQuit();
 	SDL_QuitQuit();
-
+ 
 	/* Clean out EventQ */
 	SDL_EventQ.head = 0;
 	SDL_EventQ.tail = 0;
@@ -319,7 +321,7 @@ int SDL_PeepEvents(SDL_Event *events, int numevents, SDL_eventaction action,
 								Uint32 mask)
 {
 	int i, used;
-
+ 
 	/* Don't look after we've quit */
 	if ( ! SDL_EventQ.active ) {
 		return(-1);

@@ -54,12 +54,12 @@ static void set_best_resolution(_THIS, int width, int height)
 
 	if(SDL_Display)
 		depth=GetCyberMapAttr(SDL_Display->RastPort.BitMap,CYBRMATTR_DEPTH);
-
+   
 	idok=BestCModeIDTags(CYBRBIDTG_NominalWidth,width,
 				CYBRBIDTG_NominalHeight,height,
 				CYBRBIDTG_Depth,depth,
 				TAG_DONE);
-    
+     //kprintf(" depth %ld display id %ld \n",depth,idok);
 	if(idok!=INVALID_ID)
 	{
 		if(SDL_Display)
@@ -91,12 +91,13 @@ static void move_cursor_to(_THIS, int x, int y)
 
 static void add_visual(_THIS, int depth, int class)
 {
-	Uint32 tID=BestCModeIDTags(CYBRBIDTG_Depth,depth,
+	Uint32 tID=BestCModeIDTags(
 						CYBRBIDTG_NominalWidth,640,
 						CYBRBIDTG_NominalHeight,480,
+						CYBRBIDTG_Depth,depth,
+						//CYBRBIDTG_BoardName,"UAE",
 						TAG_DONE);
-	
-    
+	 
     if(tID!=INVALID_ID)
 	{
 		int n = this->hidden->nvisuals;
@@ -138,10 +139,10 @@ int CGX_GetVideoModes(_THIS)
                   
 					for(i=0;i<nmodes;i++)
 					{
-						//if(	SDL_modelist[i]->w == (info.Nominal.MaxX+1) &&
-						//	SDL_modelist[i]->h == (info.Nominal.MaxY+1) )
-                        if(	SDL_modelist[i]->w == (info.Nominal.MaxX) &&
-							SDL_modelist[i]->h == (info.Nominal.MaxY) )
+						if(	SDL_modelist[i]->w == (info.Nominal.MaxX+1) &&
+							SDL_modelist[i]->h == (info.Nominal.MaxY+1) )
+                        //if(	SDL_modelist[i]->w == (info.Nominal.MaxX) &&
+						//	SDL_modelist[i]->h == (info.Nominal.MaxY) )
 							ok=1;
 					}
 
@@ -158,13 +159,14 @@ int CGX_GetVideoModes(_THIS)
 
 							if ( SDL_modelist[nmodes-1] == NULL )
 								break;
-
+                            
 							SDL_modelist[nmodes-1]->x = 0;
 							SDL_modelist[nmodes-1]->y = 0; 
-							//SDL_modelist[nmodes-1]->w = info.Nominal.MaxX+1;
-							//SDL_modelist[nmodes-1]->h = info.Nominal.MaxY+1;
-							SDL_modelist[nmodes-1]->w = info.Nominal.MaxX;
-							SDL_modelist[nmodes-1]->h = info.Nominal.MaxY;
+							SDL_modelist[nmodes-1]->w = info.Nominal.MaxX+1;
+							SDL_modelist[nmodes-1]->h = info.Nominal.MaxY+1;
+							//SDL_modelist[nmodes-1]->w = info.Nominal.MaxX;
+							//SDL_modelist[nmodes-1]->h = info.Nominal.MaxY;
+							//kprintf("%ld\n",info.Nominal.MaxX);
 						}
 					}
 				}
@@ -185,10 +187,16 @@ int CGX_GetVideoModes(_THIS)
 	add_visual(this, 8, PseudoColor);
 
 	if(this->hidden->nvisuals == 0) {
-	    SDL_SetError("Found no sufficiently capable CGX visuals");
-		    return -1;
-	}
+	    SDL_SetError("Bug in BestCModeIDTags Found use 16 bit screen fallback \n");
+		    //return -1;
+int n = this->hidden->nvisuals;
 
+		this->hidden->visuals[n].depth = 16;
+		this->hidden->visuals[n].visual = 0x50011100;
+		this->hidden->visuals[n].bpp = 2;
+		this->hidden->nvisuals++;
+	}
+    
     if ( SDL_modelist == NULL ) {
         SDL_modelist = (SDL_Rect **)malloc((1+1)*sizeof(SDL_Rect *));
         i = 0;
@@ -200,6 +208,7 @@ int CGX_GetVideoModes(_THIS)
                 SDL_modelist[i]->w = SDL_Display->Width;
                 SDL_modelist[i]->h = SDL_Display->Height;
                 ++i;
+				//kprintf("%ld\n",(long)SDL_Display->Width);
             }
             SDL_modelist[i] = NULL;
         }

@@ -1,4 +1,4 @@
-/* 
+/*
     SDL - Simple DirectMedia Layer
     Copyright (C) 1997, 1998, 1999, 2000, 2001  Sam Lantinga
 
@@ -399,7 +399,7 @@ void CGX_UnlockHWSurface(_THIS, SDL_Surface *surface)
 int CGX_FlipHWSurface(_THIS, SDL_Surface *surface)
 {
  ; 
-  TRAP
+  
 	/*if (skipframe)
 	{
 		if (toggle < skipframe){toggle++;return 0;}
@@ -424,7 +424,7 @@ int CGX_FlipHWSurface(_THIS, SDL_Surface *surface)
 			SafeChange=TRUE;
 		}
        //kprintf("before change2\n"); 
-      
+       TRAP
 	   int ret = ChangeScreenBuffer(SDL_Display,this->hidden->SB[current^1]);
 	   
 		{
@@ -557,11 +557,12 @@ static void CGX_NormalUpdate(_THIS, int numrects, SDL_Rect *rects)
 	int bpp;
 #endif
 	
-	/*if(this->hidden->same_format && !use_picasso96  && !this->hidden->swap_bytes)
-	{
-		format=RECTFMT_RAW;
-	}
-	else*/ switch(this->screen->format->BytesPerPixel)
+	//if(this->hidden->same_format && !use_picasso96  && !this->hidden->swap_bytes)
+	//{
+	//	format=RECTFMT_RAW;
+	//}
+	//else
+		switch(this->screen->format->BytesPerPixel)
 	{
 		case 4:
 			format=RECTFMT_RGBA;
@@ -570,6 +571,7 @@ static void CGX_NormalUpdate(_THIS, int numrects, SDL_Rect *rects)
 			format=RECTFMT_RGB;
 			break;
 		case 2:
+			//format=RECTFMT_RGB16;
 			customroutine=1;
 			break;
 		case 1:

@@ -123,6 +123,7 @@ struct SDL_PrivateVideoData {
 	struct RastPort *RP;
     short *iconcolors;		/* List of colors used by the icon */
 	int swap_bytes;
+	struct Window *SDL_Window_Background;	/* Shared by both displays (no X security?) */
 };
 
 /* Old variable names */
@@ -137,6 +138,8 @@ struct SDL_PrivateVideoData {
 #define WMwindow		(this->hidden->WMwindow)
 #define FSwindow		(this->hidden->FSwindow)
 #define SDL_Window		(this->hidden->SDL_Window)
+#define SDL_Window_Background	(this->hidden->SDL_Window_Background)
+
 #define WM_DELETE_WINDOW	(this->hidden->WM_DELETE_WINDOW)
 #define SDL_BlankCursor		(this->hidden->BlankCursor)
 #define SDL_windowid		(this->hidden->SDL_windowid)
