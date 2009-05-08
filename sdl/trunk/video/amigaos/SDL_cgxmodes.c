@@ -78,8 +78,8 @@ static void set_best_resolution(_THIS, int width, int height)
 
 static void get_real_resolution(_THIS, int* w, int* h)
 {
-    *w = /*SDL_Display->Width*/ SDL_Window->Width-SDL_Window->BorderLeft-SDL_Window->BorderRight;
-    *h = /*SDL_Display->Height*/ SDL_Window->Height-SDL_Window->BorderBottom-SDL_Window->BorderTop;
+    *w = /*SDL_Display->Width*/ SDL_Window->Width/*-SDL_Window->BorderLeft-SDL_Window->BorderRight*/;
+    *h = /*SDL_Display->Height*/ SDL_Window->Height/*-SDL_Window->BorderBottom-SDL_Window->BorderTop*/;
 }
 
 static void move_cursor_to(_THIS, int x, int y)
@@ -141,8 +141,6 @@ int CGX_GetVideoModes(_THIS)
 					{
 						if(	SDL_modelist[i]->w == (info.Nominal.MaxX+1) &&
 							SDL_modelist[i]->h == (info.Nominal.MaxY+1) )
-                        //if(	SDL_modelist[i]->w == (info.Nominal.MaxX) &&
-						//	SDL_modelist[i]->h == (info.Nominal.MaxY) )
 							ok=1;
 					}
 
@@ -164,8 +162,6 @@ int CGX_GetVideoModes(_THIS)
 							SDL_modelist[nmodes-1]->y = 0; 
 							SDL_modelist[nmodes-1]->w = info.Nominal.MaxX+1;
 							SDL_modelist[nmodes-1]->h = info.Nominal.MaxY+1;
-							//SDL_modelist[nmodes-1]->w = info.Nominal.MaxX;
-							//SDL_modelist[nmodes-1]->h = info.Nominal.MaxY;
 							//kprintf("%ld\n",info.Nominal.MaxX);
 						}
 					}
@@ -252,17 +248,17 @@ SDL_Rect **CGX_ListModes(_THIS, SDL_PixelFormat *format, Uint32 flags)
         if ( flags & SDL_FULLSCREEN ) {
             return(SDL_modelist);
         } else {
-			
+			 
             sc=LockPubScreen(0);
 			depth = GetCyberMapAttr(sc->RastPort.BitMap,CYBRMATTR_DEPTH);
 			UnlockPubScreen(0,sc);
 			if (format->BitsPerPixel == depth){
-				kprintf("bits per pixel %ld ret -1\n",format->BitsPerPixel); 
+				kprintf("bits per pixel %ld ok\n",format->BitsPerPixel); 
 				return ((SDL_Rect **)-1);
 			}
 				else 
 			{
-				kprintf("bits per pixel %ld ret 0\n",format->BitsPerPixel);
+				kprintf("bits per pixel %ld we want not\n",format->BitsPerPixel);
 				return((SDL_Rect **)0);
 			}
         }

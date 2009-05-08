@@ -20,6 +20,9 @@
     slouken@libsdl.org
 */
 
+/* Include the SDL main definition header */
+
+
 #ifdef SAVE_RCSID
 static char rcsid =
  "@(#) $Id: SDL_main.h,v 1.3 2003/09/07 17:09:23 gabry Exp $";
@@ -28,7 +31,7 @@ static char rcsid =
 #ifndef _SDL_main_h
 #define _SDL_main_h
 
-/* Redefine main() on Win32 and MacOS so that it is called by winmain.c */
+* Redefine main() on Win32 and MacOS so that it is called by winmain.c */
 
 #if defined(WIN32) || defined(_WIN32) || \
     (defined(__MWERKS__) && !defined(__BEOS__)) || \
@@ -41,7 +44,7 @@ static char rcsid =
 #define C_LINKAGE
 #endif /* __cplusplus */
 
-/* The application's main() function must be called with C linkage,
+* The application's main() function must be called with C linkage,
    and should be declared like this:
 #ifdef __cplusplus
 extern "C"
@@ -52,11 +55,11 @@ extern "C"
  */
 #define main	SDL_main
 
-/* The prototype for the application's main() function */
+* The prototype for the application's main() function */
 extern C_LINKAGE int SDL_main(int argc, char *argv[]);
 
 
-/* From the SDL library code -- needed for registering the app on Win32 */
+* From the SDL library code -- needed for registering the app on Win32 */
 #if defined(WIN32)
 #include "SDL_types.h"
 #include "begin_code.h"
@@ -65,9 +68,9 @@ extern C_LINKAGE int SDL_main(int argc, char *argv[]);
 extern "C" {
 #endif
 
-/* This should be called from your WinMain() function, if any */
+* This should be called from your WinMain() function, if any */
 extern DECLSPEC void SDLCALL SDL_SetModuleHandle(void *hInst);
-/* This can also be called, but is no longer necessary */
+* This can also be called, but is no longer necessary */
 extern DECLSPEC int SDLCALL SDL_RegisterApp(char *name, Uint32 style, void *hInst);
 
 #ifdef __cplusplus
@@ -76,7 +79,7 @@ extern DECLSPEC int SDLCALL SDL_RegisterApp(char *name, Uint32 style, void *hIns
 #include "close_code.h"
 #endif
 
-/* From the SDL library code -- needed for registering QuickDraw on MacOS */
+* From the SDL library code -- needed for registering QuickDraw on MacOS */
 #if defined(macintosh)
 #include "begin_code.h"
 
@@ -84,10 +87,10 @@ extern DECLSPEC int SDLCALL SDL_RegisterApp(char *name, Uint32 style, void *hIns
 extern "C" {
 #endif
 
-/* Forward declaration so we don't need to include QuickDraw.h */
+* Forward declaration so we don't need to include QuickDraw.h */
 struct QDGlobals;
 
-/* This should be called from your main() function, if any */
+* This should be called from your main() function, if any */
 extern DECLSPEC void SDLCALL SDL_InitQuickDraw(struct QDGlobals *the_qd);
 
 #ifdef __cplusplus

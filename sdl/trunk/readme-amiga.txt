@@ -1,3 +1,11 @@
+SDL1.2.13 Version2 linkerlib
+
+SDL_HWSURFACE work now on rgb16 and rgb32 bgra32 screen mode and give 2-3* more speed in defendguin and work more systemfriendly
+on a bitmap that is later copy with AOS blitbitmaprastport on GFX Card to window.So windows on top of SDL windows are now correct visible
+resize of window work now.
+audio with more than 2 channels can play and surround is now correct convert to 2 channels.(merge 6 lines in from powersdl)  
+
+----------------------------------------------------------
 this is port of SDL 1.2.13 to amigaos 68k 
 This use the directory structure of SDL so a port to newer versions is easy.
 The old amiga SDL 1.2.6 files are currently in the main tree, if maybe something must compare and fail under new versions. 

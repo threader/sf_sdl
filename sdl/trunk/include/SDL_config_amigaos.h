@@ -24,6 +24,7 @@
 #define _SDL_config_amigaos_h
 
 #include "SDL_platform.h"
+#include <exec/types.h>
 
 /* This is a set of defines to configure the SDL features */
 
@@ -44,6 +45,7 @@ typedef unsigned long long  uint64_t;
 #define SDL_BYTEORDER	SDL_BIG_ENDIAN
 
 //#define HAVE_LIBC 1
+
 /* Useful headers */
 #define HAVE_SYS_TYPES_H 1
 #define HAVE_STDIO_H 1
@@ -133,9 +135,12 @@ typedef unsigned long long  uint64_t;
 /* Enable various video drivers */
 #define SDL_VIDEO_DRIVER_AMIGAOS	1
 
+/* Enable OpenGL support */
+
 #define SDL_VIDEO_OPENGL	1 
+
 
 /* Enable assembly routines where available */
 #define SDL_ASSEMBLY_ROUTINES	1
 
-#endif /* _SDL_config_os2_h */
+#endif /* _SDL_config_amigaos_h */

@@ -70,7 +70,7 @@ static struct timeval	basetime;
 struct Library *TimerBase;
 
 struct Task			*OwnerTask;
-struct timerequest	*TimerReq;
+struct timerequest	 *TimerReq[2];		 /* Local copy! */ 
 unsigned long ticks; 
 
 void delete_timer(struct timerequest *tr )
@@ -107,15 +107,20 @@ if (TimerIO == NULL )
     DeleteMsgPort(timerport);   /* Delete message port */
     return( NULL );
     }
-
+ error = 0;
 error = OpenDevice( TIMERNAME, unit,(struct IORequest *) TimerIO, 0L );
-
+ //see powersdl source
+ 
+        //TimerIO->tr_node.io_Device                  = TimerReq[0]->tr_node.io_Device;
+		//TimerIO->tr_node.io_Unit                    = TimerReq[0]->tr_node.io_Unit; 
  
 if (error != 0 )
     {
+	kprintf("cant open timer device \n");
     delete_timer( TimerIO );
     return( NULL );
     }    
+
 return( TimerIO );
 }
 
@@ -159,7 +164,7 @@ struct timerequest * TimerIO_2;
 gettimerbase()
 {
     long error;
-  //need only 1, because timer device cant remove
+  
         if (TimerMP_2 = CreateMsgPort())
     {
     if (TimerIO_2 = (struct timerequest *)
@@ -171,20 +176,23 @@ gettimerbase()
             /* Issue the command and wait for it to finish, then get the reply */
 
             TimerBase        = (struct Library *)TimerIO_2->tr_node.io_Device;
+			
+			TimerReq[0]      = TimerIO_2;
+			TimerReq[1]      = TimerIO_2; 
             /* Close the timer device */
-            CloseDevice((struct IORequest *) TimerIO_2);
+            //CloseDevice((struct IORequest *) TimerIO_2);
             }
         else
             kprintf("\nError: Could not open timer device\n");
 
         /* Delete the IORequest structure */
-        DeleteIORequest(TimerIO_2);
+        //DeleteIORequest(TimerIO_2);
         }
     else
         kprintf("\nError: Could not create I/O structure\n");
 
     /* Delete the port */
-    DeleteMsgPort(TimerMP_2);
+    //DeleteMsgPort(TimerMP_2);
     
   }
 }
@@ -230,6 +238,7 @@ void SDL_Delay (Uint32 ms)
 	{
 	   return;
 	} 
+	if (ms & 0xff000000)return; //time to large
 		tv.tv_secs	= ms / 1000;
 		tv.tv_micro	= (ms % 1000) * 1000;
 
@@ -310,11 +319,15 @@ void SDL_SYS_TimerQuit(void)
 	}
 	kprintf("SYS_TimerQuit\n");
 	
-	//CloseDevice((struct IORequest *) TimerIO_2);
-	//DeleteIORequest(TimerIO_2);
-	//DeleteMsgPort(TimerMP_2);
+	
 }
-
+void amiga_quit_timer(void) //called at end of sdl program
+{
+    //Delay(10);// safe that all subtasks end
+    CloseDevice((struct IORequest *) TimerIO_2);
+	DeleteIORequest(TimerIO_2);
+	DeleteMsgPort(TimerMP_2);
+}
 int SDL_SYS_StartTimer(void)
 {
 	SDL_SetError("Internal logic error: AmigaOS uses threaded timer");

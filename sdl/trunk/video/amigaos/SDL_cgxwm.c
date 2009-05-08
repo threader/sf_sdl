@@ -208,7 +208,7 @@ void CGX_SetIcon(_THIS, SDL_Surface *icon, Uint8 *mask)
 void CGX_SetCaption(_THIS, const char *title, const char *icon)
 {
 	if(SDL_Window)
-		SetWindowTitles(SDL_Window,(char *)title,NULL);
+		SetWindowTitles(SDL_Window,(char *)title,(char *)icon);
 }
 
 /* Iconify the window */

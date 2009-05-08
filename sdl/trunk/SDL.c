@@ -220,7 +220,7 @@ void SDL_Quit(void)
   printf("[SDL_Quit] : Enter! Calling QuitSubSystem()\n"); fflush(stdout);
 #endif
 	SDL_QuitSubSystem(SDL_INIT_EVERYTHING);
-
+ 
 #ifdef CHECK_LEAKS
 #ifdef DEBUG_BUILD
   printf("[SDL_Quit] : CHECK_LEAKS\n"); fflush(stdout);
@@ -231,7 +231,7 @@ void SDL_Quit(void)
 		fprintf(stderr, "SDL Warning: %d SDL surfaces extant\n", 
 							surfaces_allocated);
 	}
-#endif
+#endif 
 #ifdef DEBUG_BUILD
   printf("[SDL_Quit] : SDL_UninstallParachute()\n"); fflush(stdout);
 #endif
@@ -245,7 +245,8 @@ void SDL_Quit(void)
 #ifdef DEBUG_BUILD
   printf("[SDL_Quit] : Returning!\n"); fflush(stdout);
 #endif
-
+    
+    amiga_quit_timer();  //amigaos add
 }
 
 /* Return the library version number */
