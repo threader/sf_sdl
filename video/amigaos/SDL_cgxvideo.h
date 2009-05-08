@@ -123,7 +123,8 @@ struct SDL_PrivateVideoData {
 	struct RastPort *RP;
     short *iconcolors;		/* List of colors used by the icon */
 	int swap_bytes;
-	struct Window *SDL_Window_Background;	/* Shared by both displays (no X security?) */
+	struct Window *SDL_Window_Background;
+    struct BitMap *bmap;
 };
 
 /* Old variable names */
@@ -184,6 +185,7 @@ struct private_hwdata
 	struct SDL_VideoDevice *videodata;
 	APTR mask;
 	int allocated;
+	struct Window *amigawindow;
 };
 
 int CGX_CheckHWBlit(_THIS,SDL_Surface *src,SDL_Surface *dst);

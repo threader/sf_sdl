@@ -176,6 +176,8 @@ static int amiga_DispatchEvent(_THIS,struct IntuiMessage *msg)
 	int posted;
     
 	posted = 0;
+	
+	
 	switch (class) {
 	    /* Gaining mouse coverage? */
 	    case IDCMP_ACTIVEWINDOW:
@@ -219,9 +221,14 @@ static int amiga_DispatchEvent(_THIS,struct IntuiMessage *msg)
 
 	    /* Mouse button press? */
 		case IDCMP_MOUSEBUTTONS:
-
+			
+           
 			if(!(code&IECODE_UP_PREFIX))
 			{
+			if (msg->MouseX < SDL_Window->BorderLeft || msg->MouseY < 0 || msg->MouseX >= (current_w + SDL_Window->BorderLeft) || msg->MouseY >= (current_h+ SDL_Window->BorderTop))
+		   {
+             break;
+	       }
 				posted = SDL_PrivateMouseButton(SDL_PRESSED,
 						amiga_GetButton(code), 0, 0);
 			    }
@@ -233,7 +240,7 @@ static int amiga_DispatchEvent(_THIS,struct IntuiMessage *msg)
 						amiga_GetButton(code), 0, 0);
 			}
 			break;
-
+		   
 	    case IDCMP_RAWKEY:
 
 		    /* Key press? */
@@ -344,16 +351,18 @@ void amiga_PumpEvents(_THIS)
 	int pending;
 	struct IntuiMessage *m;
 	if ((!SDL_Window) || (!SDL_Window->UserPort))return 0;
-    mousex = -4; // to collect only the last mousepos
-	mousey = -4;
+    mousex = -16000; // to collect only the last mousepos and detect if a mousemove have come.
+	mousey = -16000;
 	/* Keep processing pending events */
 	pending = 0;
 	while ( m=(struct IntuiMessage *)GetMsg(SDL_Window->UserPort) ) {
 		amiga_DispatchEvent(this,m);
 		++pending;
 	}
-	if (mousex != -4)
+	if (mousex != -16000)
+	{   
 		SDL_PrivateMouseMotion(0, 0,mousex,mousey);
+	}
 }
 
 void amiga_InitKeymap(void)

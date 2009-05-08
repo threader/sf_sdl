@@ -105,8 +105,7 @@ Uint32 RunThread(char * p1)
 			    ix_CreateChildData(Father,0);
 			    SDL_RunThread(data);
 				CloseLibrary(ixemulbase);
-				kprintf("before father signal %lx \n",Father);
-				Signal(Father,SIGBREAKF_CTRL_F |SIGBREAKF_CTRL_C);
+				Signal(Father,SIGBREAKF_CTRL_F );
 				
 				
 	    }
@@ -115,11 +114,12 @@ Uint32 RunThread(char * p1)
 	{
 	SDL_RunThread(data);
 	D(bug("Thread exited, signaling father (%lx)...\n",Father));
-	Signal(Father,SIGBREAKF_CTRL_F | SIGBREAKF_CTRL_C);
+	Signal(Father,SIGBREAKF_CTRL_FC);
 	D(bug("Thread with data %lx ended\n",data));
 	}
     #endif
-	kprintf("after father signal\n");
+	
+     //kprintf(" Task %lx end \n",FindTask(0));
 	return(0);
 }
 
@@ -232,27 +232,41 @@ Uint32 SDL_ThreadID(void)
 
 void SDL_SYS_WaitThread(SDL_Thread *thread)
 {
-	Forbid();
-	struct List *t = &SysBase->TaskWait;
-	struct Node *n;
-	int found = 0;
 	
-    for ( n = t->lh_Head->ln_Succ;
+	
+	struct Node *n;
+	int found;
+	SetSignal(0L,SIGBREAKF_CTRL_F);
+for (;;)
+{ 
+	found = 0;
+	Disable();
+	struct List *t = &SysBase->TaskWait;
+    for ( n = t->lh_Head;
 		n;
 		n = n->ln_Succ)
 		if (thread->handle == n)found = 1;
 	t = &SysBase->TaskReady;
-	for ( n = t->lh_Head->ln_Succ;
+	
+	for ( n = t->lh_Head;
 		n;
 		n = n->ln_Succ)
 		if (thread->handle == n)found = 1;
-	if (found) //check if the task is here
+	    if (FindTask(0) == n)found =1;
+	Enable();
+
+	//kprintf("wait task %lx %ld \n", thread->handle,found);
+	if (!found) //check if the task is here
 	{
-		
-	SetSignal(0L,SIGBREAKF_CTRL_F);
-	Wait(SIGBREAKF_CTRL_F|SIGBREAKF_CTRL_C);
+    //kprintf("task is quit%lx %lx \n", thread->handle,n);
+    return;
+	//TRAP	
+	//SetSignal(0L,SIGBREAKF_CTRL_F);
+	//Wait(SIGBREAKF_CTRL_F|SIGBREAKF_CTRL_C);
+    
 	}
-	Permit();
+	Delay(2);
+}	 
 }
 
 void SDL_SYS_KillThread(SDL_Thread *thread)

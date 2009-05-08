@@ -286,13 +286,13 @@ VideoBootStrap CGX_bootstrap = {
 	"CGX", "AmigaOS CyberGraphics", CGX_Available, CGX_CreateDevice
 };
 
-Uint32 MakeBitMask(_THIS,int type,int format,int *bpp)
+Uint32 MakeBitMask(_THIS,int type,int format,int *bpp, struct SDL_Surface *screen)
 {
 	D(if(type==0)bug("REAL pixel format: "));
    
 	if(this->hidden->depth==*bpp)
 	{
-    kprintf("Pixel Format %ld\n",format);
+    //kprintf("Pixel Format %ld\n",format);
 	switch(format)
     	{
 		case PIXFMT_LUT8:
@@ -328,7 +328,7 @@ Uint32 MakeBitMask(_THIS,int type,int format,int *bpp)
 			switch(type)
 			{
 				case 0:
-					//kprintf("RGB16PC\n");
+					
 					return 63488;
 				case 1:
 					return 2016;
@@ -393,11 +393,11 @@ Uint32 MakeBitMask(_THIS,int type,int format,int *bpp)
 					return 0xff;
 			}
 		case PIXFMT_BGRA32:
-		    
+		   
 			switch(type)
 			{
 #if SDL_BYTEORDER == SDL_LIL_ENDIAN
-                case 0:
+               case 0:
 					D(bug("BGRA32\n"));
 					return 0xff;
 				case 1:
@@ -405,14 +405,24 @@ Uint32 MakeBitMask(_THIS,int type,int format,int *bpp)
 				case 2:
 					return 0xff0000;
 #else
+ 
                 case 0:
 					D(bug("BGRA32\n"));
-					return 0xff000000;
+					if (screen && (screen->flags & SDL_HWSURFACE)){return 0x00ff00;}	
+                    return 0xff000000;		
+					
 				case 1:
-					return 0x00ff0000;
+					if (screen && (screen->flags & SDL_HWSURFACE)){return 0xff0000;} //green
+					return 0x00ff0000; 
 				case 2:
-					return 0x0000ff00;			
-				
+					if (screen && (screen->flags & SDL_HWSURFACE))return 0xff000000;	//blue
+					return 0x0000ff00;
+					
+					
+
+
+
+
 
 #endif
             }
@@ -632,9 +642,9 @@ static int CGX_VideoInit(_THIS, SDL_PixelFormat *vformat)
 
 		if ( vformat->BitsPerPixel > 8 )
 		{
-			vformat->Rmask = MakeBitMask(this,0,form,&this->hidden->depth);
-	  		vformat->Gmask = MakeBitMask(this,1,form,&this->hidden->depth);
-		  	vformat->Bmask = MakeBitMask(this,2,form,&this->hidden->depth);
+			vformat->Rmask = MakeBitMask(this,0,form,&this->hidden->depth,0);
+	  		vformat->Gmask = MakeBitMask(this,1,form,&this->hidden->depth,0);
+		  	vformat->Bmask = MakeBitMask(this,2,form,&this->hidden->depth,0);
 		  
 		}
 	}
@@ -687,6 +697,7 @@ void CGX_DestroyWindow(_THIS, SDL_Surface *screen)
 			if (SDL_Window_Background)CloseWindow(SDL_Window_Background);
 			SDL_Window=NULL;
             SDL_Window_Background=NULL;
+			
 		}
 
 		/* Free the colormap entries */
@@ -725,16 +736,19 @@ static void CGX_SetSizeHints(_THIS, int w, int h, Uint32 flags)
 	}
 	if ( flags & SDL_FULLSCREEN ) {
 		flags&=~SDL_RESIZABLE;
-	} else if ( getenv("SDL_VIDEO_CENTERED") ) {
-		int display_w, display_h;
-
-		display_w = SDL_Display->Width;
-		display_h = SDL_Display->Height;
-		ChangeWindowBox(SDL_Window,(display_w - w - SDL_Window->BorderLeft-SDL_Window->BorderRight)/2,
-					(display_h - h - SDL_Window->BorderTop-SDL_Window->BorderBottom)/2,
-					w+SDL_Window->BorderLeft+SDL_Window->BorderRight,
-					h+SDL_Window->BorderTop+SDL_Window->BorderBottom);
 	}
+	//else
+    
+	//if ( getenv("SDL_VIDEO_CENTERED") ) {
+	//	int display_w, display_h;
+
+	//	display_w = SDL_Display->Width;
+	//	display_h = SDL_Display->Height;
+	//	ChangeWindowBox(SDL_Window,(display_w - w /* -SDL_Window->BorderLeft-SDL_Window->BorderRight */)/2,
+	//				(display_h - h /* -SDL_Window->BorderTop-SDL_Window->BorderBottom*/)/2,
+	//				w/*+SDL_Window->BorderLeft+SDL_Window->BorderRight */,
+	//				h/*+SDL_Window->BorderTop+SDL_Window->BorderBottom */);
+	//}
 }
 
 int CGX_CreateWindow(_THIS, SDL_Surface *screen,
@@ -786,15 +800,18 @@ int CGX_CreateWindow(_THIS, SDL_Surface *screen,
 				
 			}
 		}
+		if(flags&SDL_HWSURFACE)screen->flags|=SDL_HWSURFACE;
+		  
  
 		D(bug("BEFORE screen allocation: bpp:%ld (real:%ld)\n",bpp,this->hidden->depth));
 
 /* With this call if needed I'll revert the wanted bpp to a bpp best suited for the display, actually occurs
    only with requested format 15/16bit and display format != 15/16bit
  */
+		
         
 		if ( ! SDL_ReallocFormat(screen, bpp,
-				MakeBitMask(this,0,form,&bpp), MakeBitMask(this,1,form,&bpp), MakeBitMask(this,2,form,&bpp), 0) )
+				MakeBitMask(this,0,form,&bpp,screen), MakeBitMask(this,1,form,&bpp,screen), MakeBitMask(this,2,form,&bpp,screen), 0) )
 			return -1;
         
 		D(bug("AFTER screen allocation: bpp:%ld (real:%ld)\n",bpp,this->hidden->depth));
@@ -842,25 +859,26 @@ int CGX_CreateWindow(_THIS, SDL_Surface *screen,
 	/* Create (or use) the X11 display window */
 
 	if ( !SDL_windowid ) {
+		int left = (SDL_Display->Width - w) / 2;
+		int top = (SDL_Display->Height - h) / 2;
+		if (left < 0 )left = 0;
+		if (top  < 0 )top =0;
+				
 			if( flags & SDL_FULLSCREEN )
 			{ 
-				struct Screen * sc;
-				int left = (SDL_Display->Width - w) / 2;
-				int top = (SDL_Display->Height - h) / 2;
-				if (left < 0 )left = 0;
-		 		if (top  < 0 )top =0;
-				sc = SDL_Display;
+				
 				//SetAPen(&sc->RastPort,1); // rest of display should be black
 				//RectFill(&sc->RastPort,0,0,w-1,h-1); 
 				SDL_Window_Background = OpenWindowTags(NULL,WA_Left,0,WA_Top,0, 
-											WA_Flags,WFLG_SIMPLE_REFRESH | WFLG_ACTIVATE|WFLG_RMBTRAP|WFLG_BORDERLESS|WFLG_BACKDROP|WFLG_REPORTMOUSE,
-											WA_IDCMP,IDCMP_RAWKEY|IDCMP_MOUSEBUTTONS|IDCMP_MOUSEMOVE,
+											WA_Flags,WFLG_SIMPLE_REFRESH | WFLG_ACTIVATE|WFLG_RMBTRAP|WFLG_BORDERLESS|WFLG_BACKDROP
+											/*|WFLG_REPORTMOUSE */,
+											WA_IDCMP,0,
 											WA_CustomScreen,(ULONG)SDL_Display,
 											TAG_DONE);
 				SetAPen(SDL_Window_Background->RPort,1); // rest of display should be black
 				RectFill(SDL_Window_Background->RPort,0,0,SDL_Window_Background->Width-1,SDL_Window_Background->Height); 
 				SDL_Window = OpenWindowTags(NULL,WA_Left,left,WA_Top,top,WA_Width,w,WA_Height,h, 
-											WA_Flags,WFLG_ACTIVATE|WFLG_RMBTRAP|WFLG_BORDERLESS | WFLG_REPORTMOUSE,
+											WA_Flags,WFLG_ACTIVATE|WFLG_RMBTRAP|WFLG_BORDERLESS | WFLG_REPORTMOUSE ,
 											WA_IDCMP,IDCMP_RAWKEY|IDCMP_MOUSEBUTTONS|IDCMP_MOUSEMOVE,
 											WA_CustomScreen,(ULONG)SDL_Display,
 											TAG_DONE);
@@ -875,12 +893,12 @@ int CGX_CreateWindow(_THIS, SDL_Surface *screen,
 			else
 			{
 				/* Create GimmeZeroZero window when OpenGL is used */
-				unsigned long gzz = FALSE;
-				if( flags & SDL_OPENGL ) {
+				unsigned long gzz = TRUE;
+				/*if( flags & SDL_OPENGL ) {
 					gzz = TRUE;
-				}
+				}*/
 
-				SDL_Window = OpenWindowTags(NULL,WA_InnerWidth,w,WA_InnerHeight,h,
+				SDL_Window = OpenWindowTags(NULL,WA_Left,left,WA_Top,top,WA_InnerWidth,w,WA_InnerHeight,h,
 											WA_Flags,WFLG_REPORTMOUSE|WFLG_ACTIVATE|WFLG_RMBTRAP | ((flags&SDL_NOFRAME) ? 0 : (WFLG_DEPTHGADGET|WFLG_CLOSEGADGET|WFLG_DRAGBAR | ((flags&SDL_RESIZABLE) ? WFLG_SIZEGADGET|WFLG_SIZEBBOTTOM : 0))),
 											WA_IDCMP,IDCMP_RAWKEY|IDCMP_CLOSEWINDOW|IDCMP_MOUSEBUTTONS|IDCMP_NEWSIZE|IDCMP_MOUSEMOVE,
 											WA_PubScreen,(ULONG)SDL_Display,
@@ -902,6 +920,10 @@ int CGX_CreateWindow(_THIS, SDL_Surface *screen,
 					case PIXFMT_RGB16PC:
 						this->hidden->swap_bytes = 1; 
 						break;
+                    case PIXFMT_BGRA32:
+                        
+						//this->hidden->swap_bytes = 1; 
+						break;
 				}
 			} 
 	this->hidden->BytesPerPixel=GetCyberMapAttr(SDL_Window->RPort->BitMap,CYBRMATTR_BPPIX);
@@ -922,7 +944,7 @@ int CGX_CreateWindow(_THIS, SDL_Surface *screen,
 	}
 	else SDL_RastPort=SDL_Window->RPort;
 
-	if(flags&SDL_HWSURFACE)screen->flags|=SDL_HWSURFACE;
+	
     
 	if( !SDL_windowid ) {
 	    CGX_SetSizeHints(this, w, h, flags);
@@ -962,7 +984,7 @@ int CGX_CreateWindow(_THIS, SDL_Surface *screen,
 				screen->flags |= SDL_OPENGL;
 		}
 	}
-	kprintf("%ld %ld\n",screen->format->BitsPerPixel,this->hidden->BytesPerPixel);
+	kprintf("bit %ld byte / Pixel %ld render buffer addr %lx \n",screen->format->BitsPerPixel,this->hidden->BytesPerPixel,screen->pixels);
 	return 0;
 }
 
@@ -977,7 +999,7 @@ int CGX_ResizeWindow(_THIS,
 		current_w = w;
 		current_h = h;
 
-		ChangeWindowBox(SDL_Window,SDL_Window->LeftEdge,SDL_Window->TopEdge, w+SDL_Window->BorderLeft+SDL_Window->BorderRight,
+		ChangeWindowBox(SDL_Window,SDL_Window->LeftEdge ,SDL_Window->TopEdge, w+SDL_Window->BorderLeft+SDL_Window->BorderRight,
 					h+SDL_Window->BorderTop+SDL_Window->BorderBottom);
 
 		screen->w = w;
@@ -994,7 +1016,8 @@ static SDL_Surface *CGX_SetVideoMode(_THIS, SDL_Surface *current,
 	Uint32 saved_flags;
 	int needcreate=0;
 	if (getenv("SDL_HWSURFACE"))flags |= SDL_HWSURFACE ;
-	else {flags &= ~SDL_HWSURFACE ;flags &= ~SDL_DOUBLEBUF;}
+	if (getenv("SDL_SWSURFACE"))flags &= ~SDL_HWSURFACE ;
+	flags &= ~SDL_DOUBLEBUF;
 	D(bug("CGX_SetVideoMode current:%lx\n",current));
 
 	/* Lock the event thread, in multi-threading environments */
@@ -1006,7 +1029,6 @@ static SDL_Surface *CGX_SetVideoMode(_THIS, SDL_Surface *current,
 		needcreate=1;
 
 // Check if we need to close an already existing videomode...
-    kprintf("Set Video mode depth %ld\n",bpp);
 	if(current && current->flags&SDL_FULLSCREEN && !(flags&SDL_FULLSCREEN)) {
 		unsigned long i;
 		D(bug("Destroying image, window & screen!\n"));
@@ -1017,7 +1039,7 @@ static SDL_Surface *CGX_SetVideoMode(_THIS, SDL_Surface *current,
 		GFX_Display=SDL_Display=LockPubScreen(NULL);
 
 		bpp=this->hidden->depth=GetCyberMapAttr(SDL_Display->RastPort.BitMap,CYBRMATTR_DEPTH);
-        kprintf("Set Video mode depth %ld\n",bpp);
+        //kprintf("Set Video mode depth %ld\n",bpp);
 		for ( i = 0; i < this->hidden->nvisuals; i++ ) {
 			if ( this->hidden->visuals[i].depth == bpp ) /* era .depth */
 				break;
@@ -1183,7 +1205,7 @@ buildnewscreen:
 			goto done;
 		}
 	}
-
+ 
 #if 0
 	/* Set up the new mode framebuffer */
 	if ( ((current->w != width) || (current->h != height)) ||
@@ -1198,6 +1220,7 @@ buildnewscreen:
 	current->flags |= (flags&SDL_RESIZABLE); // Resizable only if the user asked it
 
   done:
+	Delay(1);
 	/* Release the event thread */
 	SDL_Unlock_EventThread();
 
@@ -1291,6 +1314,7 @@ static void SetSingleColor(Uint32 fmt, unsigned char r, unsigned char g, unsigne
 			c[3]=b;
 			break;
 		case PIXFMT_BGRA32:
+        
 			c[0]=b;
 			c[1]=g;
 			c[2]=r;
@@ -1321,13 +1345,13 @@ static void CGX_UpdateMouse(_THIS)
 	}
 	else
 	{
-		if(	SDL_Display->MouseX>=(SDL_Window->LeftEdge+SDL_Window->BorderLeft) && SDL_Display->MouseX<(SDL_Window->LeftEdge+SDL_Window->Width-SDL_Window->BorderRight) &&
-			SDL_Display->MouseY>=(SDL_Window->TopEdge+SDL_Window->BorderLeft) && SDL_Display->MouseY<(SDL_Window->TopEdge+SDL_Window->Height-SDL_Window->BorderBottom)
+		if(	SDL_Display->MouseX>=(SDL_Window->LeftEdge/*+SDL_Window->BorderLeft*/) && SDL_Display->MouseX<(SDL_Window->LeftEdge+ SDL_Window->Width/*-SDL_Window->BorderRight*/) &&
+			SDL_Display->MouseY>=(SDL_Window->TopEdge/*+SDL_Window->BorderLeft*/) && SDL_Display->MouseY<(SDL_Window->TopEdge+SDL_Window->Height/*-SDL_Window->BorderBottom*/)
 			)
 		{
 			SDL_PrivateAppActive(1, SDL_APPMOUSEFOCUS);
-			SDL_PrivateMouseMotion(0, 0, SDL_Display->MouseX-SDL_Window->LeftEdge-SDL_Window->BorderLeft,
-										SDL_Display->MouseY-SDL_Window->TopEdge-SDL_Window->BorderTop);
+			SDL_PrivateMouseMotion(0, 0, SDL_Display->MouseX-SDL_Window->LeftEdge/*-SDL_Window->BorderLeft*/,
+										SDL_Display->MouseY-SDL_Window->TopEdge/*-SDL_Window->BorderTop*/);
 		}
 		else
 		{
@@ -1475,5 +1499,9 @@ static void CGX_VideoQuit(_THIS)
 	}
 	D(bug("End of CGX_VideoQuit.\n"));
 
+}
+struct Window * SDL_GetAmigaWindow(_THIS)
+{
+	return SDL_Window;
 }
 

@@ -60,12 +60,12 @@ int amiga_ShowWMCursor(_THIS, WMcursor *cursor)
 		if ( cursor == NULL ) {
 			if ( SDL_BlankCursor != NULL ) {
 // Hide cursor HERE
-				SetPointer(SDL_Window,(UWORD *)SDL_BlankCursor,1,1,0,0);
+				if (SDL_Window)SetPointer(SDL_Window,(UWORD *)SDL_BlankCursor,1,1,0,0);
 			}
 		} else {
 // Show cursor
-			ClearPointer(SDL_Window);
-		}
+			if (SDL_Window)ClearPointer(SDL_Window);
+					}
 		SDL_Unlock_EventThread();
 	}
 	return(1);

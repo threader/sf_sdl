@@ -146,6 +146,7 @@ void mywaitdone(struct mywaitdata *data)
 		FreeSignal(data->port.mp_SigBit);
 		data->port.mp_SigBit = (UBYTE) -1;
 	}
+	CloseDevice( (struct IORequest *) &data->timereq );
 }
 
 static
@@ -153,7 +154,7 @@ int mywaitinit(struct mywaitdata *data, Uint32 timeout)
 {
 	data->extramask = 0;
 	data->pending   = FALSE;
-
+    int error;
 	if ((BYTE) (data->port.mp_SigBit = AllocSignal(-1)) != -1)
 	{
 		struct timerequest *req = TimerReq[timeout < 100]; /* 0 = VBlank, 1 = MicroHz */
@@ -166,8 +167,10 @@ int mywaitinit(struct mywaitdata *data, Uint32 timeout)
 		data->timereq.tr_node.io_Message.mn_Node.ln_Type = NT_REPLYMSG;
 		data->timereq.tr_node.io_Message.mn_ReplyPort    = &data->port;
 		data->timereq.tr_node.io_Message.mn_Length       = sizeof(data->timereq);
-		data->timereq.tr_node.io_Device                  = req->tr_node.io_Device;
-		data->timereq.tr_node.io_Unit                    = req->tr_node.io_Unit;
+		error = OpenDevice( TIMERNAME, UNIT_MICROHZ,(struct IORequest *) &data->timereq, 0L );
+		if (error)kprintf("cant open timer device\n");
+		//data->timereq.tr_node.io_Device                  = req->tr_node.io_Device;
+		//data->timereq.tr_node.io_Unit                    = req->tr_node.io_Unit;
 
 		return 0;
 	}
@@ -277,7 +280,7 @@ void SDL_DestroySemaphore(SDL_sem *sem)
 				}
 
 				ReleaseSemaphore(&sem->sem);
-
+                Delay(2);
 				res = mywait(&data, 10);
 
 				ObtainSemaphore(&sem->sem);

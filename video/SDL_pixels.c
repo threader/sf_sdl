@@ -343,13 +343,11 @@ Uint32 SDL_MapRGB
  const Uint8 r, const Uint8 g, const Uint8 b)
 {
 	if ( format->palette == NULL ) {
-		if (format->Gloss == FAST16BIT)
-		{
-           return SDL_Swap16(((g>>2)<<5)|	
-                             ((r>>3)<<11)|				
-		                      (b>>3)     |             
-						  format->Amask);	        	  
-		}                                
+		//if (format->Bmask == 0xff000000 && format->BitsPerPixel == 32)  // amigaos for bgra32 format hwsurface
+		//{
+  //         return  (r << 16) | (g << 8) | (b << 0);// | (0xff << 24);          
+		//				  
+		//}                                
 		return (r >> format->Rloss) << format->Rshift
 		       | (g >> format->Gloss) << format->Gshift
 		       | (b >> format->Bloss) << format->Bshift
@@ -365,14 +363,18 @@ Uint32 SDL_MapRGBA
  const Uint8 r, const Uint8 g, const Uint8 b, const Uint8 a)
 {
 	if ( format->palette == NULL ) {
+		//if (format->Bmask == 0xff000000 && format->BitsPerPixel == 32)  // amigaos for bgra32 format hwsurface
+		//{
+  //         return  (r << 16) | (g << 8) | (b << 0) | (a << 24);          
+		//				  
+		//}                                
 	        return (r >> format->Rloss) << format->Rshift
 		    | (g >> format->Gloss) << format->Gshift
 		    | (b >> format->Bloss) << format->Bshift
 		    | ((a >> format->Aloss) << format->Ashift & format->Amask);
 	} else {
 		return SDL_FindColor(format->palette, r, g, b);
-	}
-}
+	}}
 
 void SDL_GetRGBA(Uint32 pixel, SDL_PixelFormat *fmt,
 		 Uint8 *r, Uint8 *g, Uint8 *b, Uint8 *a)
@@ -386,7 +388,7 @@ void SDL_GetRGBA(Uint32 pixel, SDL_PixelFormat *fmt,
 		 * and that opaque alpha is 255.
 		 * This only works for RGB bit fields at least 4 bit
 		 * wide, which is almost always the case.
-		 */
+		 */  
 	        unsigned v;
 		v = (pixel & fmt->Rmask) >> fmt->Rshift;
 		*r = (v << fmt->Rloss) + (v >> (8 - (fmt->Rloss << 1)));

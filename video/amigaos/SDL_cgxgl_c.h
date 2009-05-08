@@ -1,4 +1,4 @@
-/*   
+/*
     SDL - Simple DirectMedia Layer
     Copyright (C) 1997, 1998, 1999, 2000, 2001  Sam Lantinga
 
@@ -30,7 +30,7 @@ static char rcsid =
 #include "../SDL_sysvideo.h"
 #define _THIS   SDL_VideoDevice *_this
 
-#ifdef HAVE_OPENGL
+#ifdef SDL_VIDEO_OPENGL
 #include <GL/Amigamesa.h>
 extern void *AmiGetGLProc(const char *proc);
 #endif /* HAVE_OPENGL */
@@ -43,7 +43,7 @@ struct SDL_PrivateGLData {
 extern int CGX_GL_Init(_THIS);
 extern void CGX_GL_Quit(_THIS);
 extern int CGX_GL_Update(_THIS);
-#ifdef HAVE_OPENGL
+#ifdef SDL_VIDEO_OPENGL
 extern int CGX_GL_MakeCurrent(_THIS);
 extern int CGX_GL_GetAttribute(_THIS, SDL_GLattr attrib, int* value);
 extern void CGX_GL_SwapBuffers(_THIS);

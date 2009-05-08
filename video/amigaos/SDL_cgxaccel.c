@@ -1,4 +1,4 @@
-/* 
+/*
     SDL - Simple DirectMedia Layer
     Copyright (C) 1997, 1998, 1999, 2000  Sam Lantinga
 
@@ -64,7 +64,7 @@ void BBB(struct BitMap *a,long b, long c,struct BitMap *d,long e,long f,long g,l
 
 int CGX_SetHWColorKey(_THIS,SDL_Surface *surface, Uint32 key)
 {
-	//return -1;
+	return -1; // do no accel blits
 	if(surface->hwdata)
 	{
 		if(surface->hwdata->mask)
@@ -190,6 +190,7 @@ int CGX_CheckHWBlit(_THIS,SDL_Surface *src,SDL_Surface *dst)
 {
 // Doesn't support yet alpha blitting
 	//kprintf("HW blit\n");
+	if (this->hidden->swap_bytes)return 0;
 	if(src->hwdata&& !(src->flags & (SDL_SRCALPHA)))
 	{
 		D(bug("CheckHW blit... OK!\n"));
@@ -223,7 +224,7 @@ static int CGX_HWAccelBlit(SDL_Surface *src, SDL_Rect *srcrect,
 {
 	struct SDL_VideoDevice *this=src->hwdata->videodata;
 //	D(bug("Accel blit!\n"));
-    //return 0;
+    //kprintf("Accel blit\n");
 	if(src->flags&SDL_SRCCOLORKEY && src->hwdata->mask)
 	{
 		if(dst==SDL_VideoSurface)
@@ -231,11 +232,11 @@ static int CGX_HWAccelBlit(SDL_Surface *src, SDL_Rect *srcrect,
 			BMKBRP(src->hwdata->bmap,srcrect->x,srcrect->y,
 						SDL_RastPort,dstrect->x+SDL_Window->BorderLeft,dstrect->y+SDL_Window->BorderTop,
 						srcrect->w,srcrect->h,0xc0,src->hwdata->mask);
-		}
+		} 
 		else if(dst->hwdata)
 		{
 			if(!temprp_init)
-			{
+			{ 
 				InitRastPort(&temprp);
 				temprp_init=1;
 			}
@@ -247,10 +248,10 @@ static int CGX_HWAccelBlit(SDL_Surface *src, SDL_Rect *srcrect,
 			
 		}
 	}
-	else if(dst==SDL_VideoSurface)
-	{
-		BBRP(src->hwdata->bmap,srcrect->x,srcrect->y,SDL_RastPort,dstrect->x+SDL_Window->BorderLeft,dstrect->y+SDL_Window->BorderTop,srcrect->w,srcrect->h,0xc0);
-	}
+	//else if(dst==SDL_VideoSurface)
+	//{
+	//	BBRP(src->hwdata->bmap,srcrect->x,srcrect->y,SDL_Window->RPort,dstrect->x/*+SDL_Window->BorderLeft*/,dstrect->y/*+SDL_Window->BorderTop*/,srcrect->w,srcrect->h,0xc0);
+	//}
 	else if(dst->hwdata)
 		BBB(src->hwdata->bmap,srcrect->x,srcrect->y,dst->hwdata->bmap,dstrect->x,dstrect->y,srcrect->w,srcrect->h,0xc0,0xff,NULL);
 
@@ -259,13 +260,16 @@ static int CGX_HWAccelBlit(SDL_Surface *src, SDL_Rect *srcrect,
 
 int CGX_FillHWRect(_THIS,SDL_Surface *dst,SDL_Rect *dstrect,Uint32 color)
 {
-	
-	if(dst==SDL_VideoSurface)
+	if (dst->format->Bmask == 0xff000000)color = SDL_Swap32(color); // for bgra32 mode data must swap.
+	if (dst->format->Bmask == 0x1f)
 	{
-		
-		FillPixelArray(SDL_RastPort,dstrect->x+SDL_Window->BorderLeft,dstrect->y+SDL_Window->BorderTop,dstrect->w,dstrect->h,color);
+		Uint32 r,g,b;
+		b = (color & 0x1f) << 3;  // from rgb16PC mode data must change to fit the rgb FillPixelArray format. 
+		g = ((color >> 5) & 0x3f) << 2;
+		r = ((color >> 11) & 0x1f) << 3;
+        color = b | (g << 8) | (r << 16);
 	}
-	else if(dst->hwdata)
+	if(dst->hwdata)
 	{
 		if(!temprp_init)
 		{
@@ -274,7 +278,6 @@ int CGX_FillHWRect(_THIS,SDL_Surface *dst,SDL_Rect *dstrect,Uint32 color)
 		}
 
 		temprp.BitMap=(struct BitMap *)dst->hwdata->bmap;
-       
 		FillPixelArray(&temprp,dstrect->x,dstrect->y,dstrect->w,dstrect->h,color);
 	}
 	return 0;

@@ -147,7 +147,7 @@ int SDL_RunAudio(void *audiop)
 		audio->ThreadInit(audio);
 	}
 	audio->threadid = SDL_ThreadID();
-    SetTaskPri(audio->threadid,6);
+    SetTaskPri(audio->threadid,11);
 	/* Set up the mixing function */
 	fill  = audio->spec.callback;
 	udata = audio->spec.userdata;
@@ -190,10 +190,9 @@ int SDL_RunAudio(void *audiop)
 #ifdef ENABLE_AHI
 			if ( started > 1 )
 #endif
-            SDL_Delay(5);  // wait a little so gfx get some time,if system is too slow for full sound
 			audio->WaitAudio(audio);
 		}
-
+        
 		/* Fill the current buffer with sound */
 		if ( audio->convert.needed ) {
 			if ( audio->convert.buf ) {
@@ -225,7 +224,7 @@ int SDL_RunAudio(void *audiop)
 			memcpy(stream, audio->convert.buf,
 			               audio->convert.len_cvt);
 		}
-
+ 
 		/* Ready current buffer for play and change current buffer */
 		if ( stream != audio->fake_stream ) {
 			audio->PlayAudio(audio);
@@ -468,9 +467,11 @@ if ( desired->freq == 0 ) {
 	switch ( desired->channels ) {
 	    case 1:	/* Mono */
 	    case 2:	/* Stereo */
+        case 4:	/* surround */
+	    case 6:	/* surround with center and lfe */
 		break;
 	    default:
-		SDL_SetError("1 (mono) and 2 (stereo) channels supported");
+		SDL_SetError("1 (mono) and 2 (stereo) 4 Channel 6 Channel surround supported");
 		return(-1);
 	}
 if ( desired->samples == 0 ) {
@@ -567,6 +568,7 @@ if ( desired->samples == 0 ) {
 			memcpy(obtained, &audio->spec, sizeof(audio->spec));
 		} else {
 			/* Build an audio conversion block */
+			
 			if ( SDL_BuildAudioCVT(&audio->convert,
 				desired->format, desired->channels,
 						desired->freq,

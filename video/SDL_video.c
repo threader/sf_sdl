@@ -582,7 +582,7 @@ SDL_Surface * SDL_SetVideoMode (int width, int height, int bpp, Uint32 flags)
 	int video_h;
 	int video_bpp;
 	int is_opengl;
-	int flags2 = flags;
+	//int flags2 = flags;
 	SDL_GrabMode saved_grab;
     
 	/* Start up the video driver, if necessary..
@@ -880,24 +880,24 @@ SDL_Surface * SDL_SetVideoMode (int width, int height, int bpp, Uint32 flags)
 		2.  We need a hardware palette and didn't get one.
 		3.  We need a software surface and got a hardware surface.
 	*/
-	//if ( !(SDL_VideoSurface->flags & SDL_OPENGL) &&
-	//     (
-	//     (  !(flags&SDL_ANYFORMAT) &&
-	//		(SDL_VideoSurface->format->BitsPerPixel != bpp)) ||
-	//     (   (flags&SDL_HWPALETTE) && 
-	//			!(SDL_VideoSurface->flags&SDL_HWPALETTE)) ||
-	//	/* If the surface is in hardware, video writes are visible
-	//	   as soon as they are performed, so we need to buffer them
-	//	 */
-	//     (   ((flags&SDL_HWSURFACE) == SDL_SWSURFACE) &&
-	//			(SDL_VideoSurface->flags&SDL_HWSURFACE)) ||
-	//     (   (flags&SDL_DOUBLEBUF) &&
-	//			(SDL_VideoSurface->flags&SDL_HWSURFACE) &&
-	//			!(SDL_VideoSurface->flags&SDL_DOUBLEBUF))
-	//     ) ) 
+	if ( !(SDL_VideoSurface->flags & SDL_OPENGL) &&
+	     (
+	     (  !(flags&SDL_ANYFORMAT) &&
+			(SDL_VideoSurface->format->BitsPerPixel != bpp)) ||
+	     (   (flags&SDL_HWPALETTE) && 
+				!(SDL_VideoSurface->flags&SDL_HWPALETTE)) ||
+		/* If the surface is in hardware, video writes are visible
+		   as soon as they are performed, so we need to buffer them
+		 */
+	     (   ((flags&SDL_HWSURFACE) == SDL_SWSURFACE) &&
+				(SDL_VideoSurface->flags&SDL_HWSURFACE)) ||
+	     (   (flags&SDL_DOUBLEBUF) &&
+				(SDL_VideoSurface->flags&SDL_HWSURFACE) &&
+				!(SDL_VideoSurface->flags&SDL_DOUBLEBUF))
+	     ) ) 
 	     
-	  if  (!(SDL_VideoSurface->flags & SDL_OPENGL) &&
-	      !(flags2 & SDL_HWSURFACE))
+	  //if  (!(SDL_VideoSurface->flags & SDL_OPENGL) &&
+	  //    !(flags2 & SDL_HWSURFACE))
 	  {
         kprintf("Create Shadow surface\n");
 		 
@@ -1110,6 +1110,7 @@ int SDL_Flip(SDL_Surface *screen)
 	SDL_VideoDevice *video = current_video;
 	/* Copy the shadow surface to the video surface */
 	if ( screen == SDL_ShadowSurface ) {
+		
 		SDL_Rect rect;
 		SDL_Palette *pal = screen->format->palette;
 		SDL_Color *saved_colors = NULL;
@@ -1132,13 +1133,13 @@ int SDL_Flip(SDL_Surface *screen)
 		if ( SHOULD_DRAWCURSOR(SDL_cursorstate) ) {
 			SDL_LockCursor();
 			SDL_DrawCursor(SDL_ShadowSurface);
-			//SDL_LowerBlit(SDL_ShadowSurface, &rect,   // debugger show blit is done twice 
-			//		SDL_VideoSurface, &rect);
+			SDL_LowerBlit(SDL_ShadowSurface, &rect,    
+					SDL_VideoSurface, &rect);
 			SDL_EraseCursor(SDL_ShadowSurface);
 			SDL_UnlockCursor();
 		} else {
-			//SDL_LowerBlit(SDL_ShadowSurface, &rect,
-			//		SDL_VideoSurface, &rect);
+			SDL_LowerBlit(SDL_ShadowSurface, &rect,
+					SDL_VideoSurface, &rect);
 		}
 		if ( saved_colors ) {
 			pal->colors = saved_colors;

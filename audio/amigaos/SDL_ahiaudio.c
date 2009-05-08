@@ -191,7 +191,7 @@ static void AHI_CloseAudio(_THIS)
 		}
 // Double abort to be sure to break the dbuffering process.
 
-		SDL_Delay(200);
+		
 
 		D(bug("Reqs breaked, closing device...\n"));
 		CloseDevice((struct IORequest *)audio_req[0]);
@@ -200,6 +200,8 @@ static void AHI_CloseAudio(_THIS)
 		D(bug("Memory freed, deleting IOReq...\n"));
 		DeleteIORequest((struct IORequest *)audio_req[0]);
 		audio_req[0]=audio_req[1]=NULL;
+
+		Delay(3); // wait 60 ms to be safe
 	}
 
 	playing=0;
@@ -232,7 +234,11 @@ static int AHI_OpenAudio(_THIS, SDL_AudioSpec *spec)
 //	int width;
 
 	D(bug("AHI opening...\n"));
-
+    if (spec->channels > 2)
+	{
+		kprintf("More than 2 channels not currently supported, forcing conversion...\n");
+		spec->channels = 2;
+	}
 	/* Determine the audio parameters from the AudioSpec */
 	switch ( spec->format & 0xFF ) {
 
@@ -294,7 +300,7 @@ static int AHI_OpenAudio(_THIS, SDL_AudioSpec *spec)
 
 	audio_req[0]->ahir_Version = 4;
 
-	if(OpenDevice(AHINAME,0,(struct IORequest *)audio_req[0],NULL))
+	if(OpenDevice(AHINAME,3,(struct IORequest *)audio_req[0],NULL))
 	{
 		SDL_SetError("Unable to open AHI device!\n");
 		DeleteIORequest((struct IORequest *)audio_req[0]);
