@@ -108,8 +108,8 @@
 #endif
 
 #define PIXEL_COPY(to, from, len, bpp)			\
-do {							\
-    if(bpp == 4) {					\
+do {	 \
+    if(bpp == 4) {				\
 	SDL_memcpy4(to, from, (size_t)(len));		\
     } else {						\
 	SDL_memcpy(to, from, (size_t)(len) * (bpp));	\
@@ -1009,7 +1009,7 @@ typedef struct {
 	Uint32 Bmask;
 	Uint32 Amask;
 } RLEDestFormat;
-
+ 
 /* blit a pixel-alpha RLE surface clipped at the right and/or left edges */
 static void RLEAlphaClipBlit(int w, Uint8 *srcbuf, SDL_Surface *dst,
 			     Uint8 *dstbuf, SDL_Rect *srcrect)

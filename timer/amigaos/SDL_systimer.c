@@ -171,6 +171,7 @@ gettimerbase()
                    CreateIORequest(TimerMP_2,sizeof(struct timerequest)) )
         {
             /* Open with UNIT_VBLANK, but any unit can be used */
+        
         if (!(error=OpenDevice(TIMERNAME,UNIT_MICROHZ,(struct IORequest *)TimerIO_2,0L)))
             {
             /* Issue the command and wait for it to finish, then get the reply */
@@ -213,19 +214,19 @@ Uint32 SDL_GetTicks (void)
 	struct timeval tv;
 	Uint32 ticks;
     if (!TimerBase)gettimerbase();
-    GetSysTime(&tv);
-    //efreq = ReadEClock(&time1);
-	//eval = time1.ev_lo;
-	//eval +=(time1.ev_hi << 32);
-	//ticks = eval /(efreq/1000);
-	if(basetime.tv_micro > tv.tv_micro)
+    //GetSysTime(&tv);
+    efreq = ReadEClock(&time1);
+	eval = time1.ev_lo;
+	eval +=(time1.ev_hi << 32);
+	ticks = eval /(efreq/1000);
+	/*if(basetime.tv_micro > tv.tv_micro)
 	{
 		tv.tv_secs --;
           
 		tv.tv_micro += 1000000;
-	}
+	}*/
 
-	ticks = ((tv.tv_secs - basetime.tv_secs) * 1000) + ((tv.tv_micro - basetime.tv_micro)/1000);
+	//ticks = ((tv.tv_secs - basetime.tv_secs) * 1000) + ((tv.tv_micro - basetime.tv_micro)/1000);
     
 	return ticks;
 }
