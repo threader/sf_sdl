@@ -19,6 +19,7 @@
     Sam Lantinga
     slouken@libsdl.org
 */
+#define static 
 #include "SDL_config.h"
 
 /* This is the software implementation of the YUV video overlay support */
@@ -290,7 +291,7 @@ static void Color32DitherYV12Mod1X( int *colortab, Uint32 *rgb_2_pix,
                                     unsigned char *lum, unsigned char *cr,
                                     unsigned char *cb, unsigned char *out,
                                     int rows, int cols, int mod )
-{
+{ // for mp4 used 
     unsigned int* row1;
     unsigned int* row2;
     unsigned char* lum2;
@@ -342,6 +343,68 @@ static void Color32DitherYV12Mod1X( int *colortab, Uint32 *rgb_2_pix,
             *row2++ = (rgb_2_pix[ L + cr_r ] |
                        rgb_2_pix[ L + crb_g ] |
                        rgb_2_pix[ L + cb_b ]);
+        }
+
+        /*
+         * These values are at the start of the next line, (due
+         * to the ++'s above),but they need to be at the start
+         * of the line after that.
+         */
+        lum  += cols;
+        lum2 += cols;
+        row1 += mod;
+        row2 += mod;
+    }
+}
+
+static void Grey8DitherYV12Mod1X( int *colortab, Uint32 *rgb_2_pix,
+                                    unsigned char *lum, unsigned char *cr,
+                                    unsigned char *cb, unsigned char *out,
+                                    int rows, int cols, int mod )
+{ // for mp4 used 
+    unsigned char* row1;
+    unsigned char* row2;
+    unsigned char* lum2;
+    int x, y;
+    int cr_r;
+    int crb_g;
+    int cb_b;
+    int cols_2 = cols / 2;
+
+    row1 = (unsigned char *) out;
+    row2 = row1 + cols + mod;
+    lum2 = lum + cols;
+
+    mod += cols + mod;
+
+    y = rows / 2;
+    while( y-- )
+    {
+        x = cols_2;
+        while( x-- )
+        {
+            register int L;
+
+            cr_r   = 0*768+256 + colortab[ *cr + 0*256 ];
+            crb_g  = 1*768+256 + colortab[ *cr + 1*256 ]
+                               + colortab[ *cb + 2*256 ];
+            cb_b   = 2*768+256 + colortab[ *cb + 3*256 ];
+            ++cr; ++cb;
+
+            L = *lum++;
+            *row1++ = L;
+				
+
+            L = *lum++;
+            *row1++ = L;
+
+            ///* Now, do second row.  */
+
+            L = *lum2++;
+            *row2++ = L;
+
+            L = *lum2++;
+            *row2++ = L;
         }
 
         /*
@@ -937,15 +1000,27 @@ SDL_Overlay *SDL_CreateYUV_SW(_THIS, int width, int height, Uint32 format, SDL_S
 	int i;
 	int CR, CB;
 	Uint32 Rmask, Gmask, Bmask;
-
+    //new start
 	/* Only RGB packed pixel conversion supported */
-	if ( (display->format->BytesPerPixel != 2) &&
-	     (display->format->BytesPerPixel != 3) &&
+	if ( (display->format->BytesPerPixel != 1) &&
+	     (display->format->BytesPerPixel != 2) &&
+		 (display->format->BytesPerPixel != 3) &&
 	     (display->format->BytesPerPixel != 4) ) {
 		SDL_SetError("Can't use YUV data on non 16/24/32 bit surfaces");
 		return(NULL);
 	}
-
+    if (display->format->BytesPerPixel == 1)
+	{
+	 struct SDL_Color color;
+      for (i=0;i<256;i++)
+	  {
+		  color.r=i;
+		  color.g=i;
+		  color.b=i;
+		  SDL_SetColors(display,&color,i,1);
+	  }
+	}
+	//new end
 	/* Verify that we support the format */
 	switch (format) {
 	    case SDL_YV12_OVERLAY:
@@ -1100,6 +1175,12 @@ SDL_Overlay *SDL_CreateYUV_SW(_THIS, int width, int height, Uint32 format, SDL_S
 #endif
 			swdata->Display2X = Color32DitherYV12Mod2X;
 		}
+		//new
+		if ( display->format->BytesPerPixel == 1 ) {
+			swdata->Display1X = Grey8DitherYV12Mod1X;
+			swdata->Display2X = Grey8DitherYV12Mod1X;
+		}
+		//new
 		break;
 	    case SDL_YUY2_OVERLAY:
 	    case SDL_UYVY_OVERLAY:
@@ -1116,6 +1197,7 @@ SDL_Overlay *SDL_CreateYUV_SW(_THIS, int width, int height, Uint32 format, SDL_S
 			swdata->Display1X = Color32DitherYUY2Mod1X;
 			swdata->Display2X = Color32DitherYUY2Mod2X;
 		}
+
 		break;
 	    default:
 		/* We should never get here (caught above) */
