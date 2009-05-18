@@ -793,6 +793,7 @@ SDL_Surface * SDL_SetVideoMode (int width, int height, int bpp, Uint32 flags)
 
 	/* Set up a fake SDL surface for OpenGL "blitting" */
 	if ( (flags & SDL_OPENGLBLIT) == SDL_OPENGLBLIT ) {
+		
 		/* Load GL functions for performing the texture updates */
 #if SDL_VIDEO_OPENGL
 

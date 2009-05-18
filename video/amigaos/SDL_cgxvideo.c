@@ -247,7 +247,7 @@ static SDL_VideoDevice *CGX_CreateDevice(int devindex)
 	device->AllocHWSurface = CGX_AllocHWSurface;
 	device->CheckHWBlit = CGX_CheckHWBlit;
 	device->FillHWRect = CGX_FillHWRect;
-	device->SetHWColorKey = CGX_SetHWColorKey;
+	device->SetHWColorKey = NULL;//CGX_SetHWColorKey;
 	device->SetHWAlpha = NULL;
 	device->LockHWSurface = CGX_LockHWSurface;
 	device->UnlockHWSurface = CGX_UnlockHWSurface;
@@ -566,6 +566,7 @@ static int CGX_VideoInit(_THIS, SDL_PixelFormat *vformat)
 			GFX_Display=OpenScreenTags(NULL,
 									//SA_Width,SDL_Display->Width,
 									//SA_Height,SDL_Display->Height,
+									SA_Title,"SDL Screen",
 									SA_Depth,bpp,SA_Quiet,TRUE,
 									SA_ShowTitle,FALSE,
 									SA_DisplayID,okid,
@@ -658,8 +659,9 @@ static int CGX_VideoInit(_THIS, SDL_PixelFormat *vformat)
 
 	/* Fill in some window manager capabilities */
 	this->info.wm_available = 1;
+	this->info.hw_available = 1;
 	this->info.blit_hw = 1;
-	this->info.blit_hw_CC = 1;
+	this->info.blit_hw_CC = 0;
 	this->info.blit_sw = 1;
 	this->info.blit_fill = 1;
 	this->info.video_mem=8000; // Not always true but almost any Amiga card has this memory!
@@ -869,14 +871,21 @@ int CGX_CreateWindow(_THIS, SDL_Surface *screen,
 				
 				//SetAPen(&sc->RastPort,1); // rest of display should be black
 				//RectFill(&sc->RastPort,0,0,w-1,h-1); 
+				if (left !=0 || top != 0)
+				{
 				SDL_Window_Background = OpenWindowTags(NULL,WA_Left,0,WA_Top,0, 
 											WA_Flags,WFLG_SIMPLE_REFRESH | WFLG_ACTIVATE|WFLG_RMBTRAP|WFLG_BORDERLESS|WFLG_BACKDROP
 											/*|WFLG_REPORTMOUSE */,
 											WA_IDCMP,0,
+											//WA_Title,"SDL Backgroundwindow",
 											WA_CustomScreen,(ULONG)SDL_Display,
 											TAG_DONE);
+				}
+				if (SDL_Window_Background)
+				{
 				SetAPen(SDL_Window_Background->RPort,1); // rest of display should be black
 				RectFill(SDL_Window_Background->RPort,0,0,SDL_Window_Background->Width-1,SDL_Window_Background->Height); 
+				}
 				SDL_Window = OpenWindowTags(NULL,WA_Left,left,WA_Top,top,WA_Width,w,WA_Height,h, 
 											WA_Flags,WFLG_ACTIVATE|WFLG_RMBTRAP|WFLG_BORDERLESS | WFLG_REPORTMOUSE ,
 											WA_IDCMP,IDCMP_RAWKEY|IDCMP_MOUSEBUTTONS|IDCMP_MOUSEMOVE,
@@ -897,13 +906,14 @@ int CGX_CreateWindow(_THIS, SDL_Surface *screen,
 				/*if( flags & SDL_OPENGL ) {
 					gzz = TRUE;
 				}*/
-
+               
 				SDL_Window = OpenWindowTags(NULL,WA_Left,left,WA_Top,top,WA_InnerWidth,w,WA_InnerHeight,h,
 											WA_Flags,WFLG_REPORTMOUSE|WFLG_ACTIVATE|WFLG_RMBTRAP | ((flags&SDL_NOFRAME) ? 0 : (WFLG_DEPTHGADGET|WFLG_CLOSEGADGET|WFLG_DRAGBAR | ((flags&SDL_RESIZABLE) ? WFLG_SIZEGADGET|WFLG_SIZEBBOTTOM : 0))),
 											WA_IDCMP,IDCMP_RAWKEY|IDCMP_CLOSEWINDOW|IDCMP_MOUSEBUTTONS|IDCMP_NEWSIZE|IDCMP_MOUSEMOVE,
 											WA_PubScreen,(ULONG)SDL_Display,
 											WA_GimmeZeroZero, gzz,
 														TAG_DONE);
+				
 				D(bug("Opening WB window of size: %ldx%ld!\n",w,h));
 			}
 			
@@ -966,7 +976,7 @@ int CGX_CreateWindow(_THIS, SDL_Surface *screen,
 	screen->w = w;
 	screen->h = h;
 	screen->pitch = SDL_CalculatePitch(screen);
-	CGX_ResizeImage(this, screen, flags);
+	if (CGX_ResizeImage(this, screen, flags) <0 )return -1;
 
 	/* Make OpenGL Context if needed*/
 	if(flags & SDL_OPENGL) {
@@ -992,7 +1002,7 @@ int CGX_ResizeWindow(_THIS,
 			SDL_Surface *screen, int w, int h, Uint32 flags)
 {
 	D(bug("CGX_ResizeWindow\n"));
-
+ int retval = -1;
 	if ( ! SDL_windowid ) {
 		/* Resize the window manager window */
 		CGX_SetSizeHints(this, w, h, flags);
@@ -1005,9 +1015,9 @@ int CGX_ResizeWindow(_THIS,
 		screen->w = w;
 		screen->h = h;
 		screen->pitch = SDL_CalculatePitch(screen);
-		CGX_ResizeImage(this, screen, flags);
+		 retval = CGX_ResizeImage(this, screen, flags);
 	}
-	return(0);
+	return(retval);
 }
 
 static SDL_Surface *CGX_SetVideoMode(_THIS, SDL_Surface *current,
@@ -1100,6 +1110,7 @@ buildnewscreen:
 				GFX_Display=OpenScreenTags(NULL,
 								//SA_Width,width,
 								//SA_Height,height,
+								SA_Title,"SDL Screen",
 								SA_Quiet,TRUE,SA_ShowTitle,FALSE,
 								SA_Depth,bpp,
 								SA_DisplayID,okid,

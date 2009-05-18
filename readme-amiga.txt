@@ -1,9 +1,24 @@
-SDL1.2.13 Version2 linkerlib
+SDL1.2.13 Version2 GCC linkerlibs
 
-SDL_HWSURFACE work now on rgb16 and rgb32 bgra32 screen mode and give 2-3* more speed in defendguin and work more systemfriendly
-on a bitmap that is later copy with AOS blitbitmaprastport on GFX Card to window.So windows on top of SDL windows are now correct visible
-resize of window work now.
-audio with more than 2 channels can play and surround is now correct convert to 2 channels.(merge 6 lines in from powersdl)  
+*  sdl Threads can now work with ixemul, this allow much more programs get working.
+
+*  Joystick that is default on SDL Port 0 use now Amiga Port 1 so you need not remove your mouse and plug joystick in. 
+    the second joystick use then Port 0
+
+*  SDL_HWSURFACE work now on rgb16 and rgb32 bgra32 screen mode and give 2-3* more speed in defendguin and work more systemfriendly
+   on a bitmap that is later copy with AOS blitbitmaprastport on GFX Card to window.So windows on top of SDL windows are now correct visible
+   resize of window work now with overlays.
+*  audio with more than 2 channels can play and surround is now correct convert to 2 channels. 
+   on 8 bit fullscreen mode YUV overlay play now fast 256 color grey video
+
+* ahi use Unit 3 so you can define here a low quality setting for faster speed, withot touch your default setting
+
+* SDL opengl work now with stormmesa and quarktex(winuae HW3d opengl) and if you have Warp3d HW also it use Warp3d HW.note the limit on Voodoo3 of textures to 256*256 is 
+  here, but if the game have all images in png files you can convert images to be 256*256.they look of course not so sharp after convert, but game can play fast.
+  Note: need link with libgl.a(attached).If you dont want opengl, you can use libgl_dummy.a(attached)
+  You need also the new includes copy to your sdl dir. 
+
+* check if enough memory is here before allocbitmap, so it handle low memory situitions better now.
 
 ----------------------------------------------------------
 this is port of SDL 1.2.13 to amigaos 68k 

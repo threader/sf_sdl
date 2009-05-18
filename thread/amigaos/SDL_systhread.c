@@ -27,7 +27,8 @@ static char rcsid =
  "@(#) $Id: SDL_systhread.c,v 1.2 2002/11/20 08:52:36 gabry Exp $";
 #endif
 
-/* BeOS thread management routines for SDL */
+
+#include "sdl/SDL.h"
 #include <exec/nodes.h>
 #include "SDL_error.h"
 #include "SDL_mutex.h"
@@ -35,6 +36,7 @@ static char rcsid =
 #include "../SDL_thread_c.h"
 #include "../SDL_systhread.h"
 #include "../../mydebug.h"
+
 
 #ifdef AROS
 #include <stdlib.h>

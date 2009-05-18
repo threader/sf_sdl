@@ -75,8 +75,9 @@ typedef unsigned long long  uint64_t;
 #define HAVE_ABS 1
 #define HAVE_BCOPY 1
 #define HAVE_MEMSET 1
-#define HAVE_MEMCPY
+#define HAVE_MEMCPY 1
 #define HAVE_MEMMOVE 1
+#define SDL_revcpy memmove
 #define HAVE_MEMCMP 1
 #define HAVE_STRLEN 1
 

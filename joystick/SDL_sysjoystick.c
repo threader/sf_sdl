@@ -100,9 +100,9 @@ const char *SDL_SYS_JoystickName(int index)
 	{
 		switch(index)
 		{
-			case 0:
-				return "Port 1 Amiga Joystick/Joypad";
 			case 1:
+				return "Port 1 Amiga Joystick/Joypad";
+			case 0:
 				return "Port 2 Amiga Joystick/Joypad";
 		}
 	}
@@ -126,11 +126,13 @@ int SDL_SYS_JoystickOpen(SDL_Joystick *joystick)
 		return -1;
 
 /* This loop is to check if the controller is a joypad */
-
 	for(i=0;i<20;i++)
 	{
-		temp=ReadJoyPort(joystick->index^1); // fix to invert amiga joyports
-		WaitTOF();
+		int index;
+		if (joystick->index == 0)index = 1;  // SDL Port 0 should be amiga Port 2
+		else index = 0;
+		temp=ReadJoyPort(index);
+		Delay(1);
 	}
 
 	if((temp&JP_TYPE_MASK)==JP_TYPE_GAMECTLR)
@@ -158,45 +160,49 @@ void SDL_SYS_JoystickUpdate(SDL_Joystick *joystick)
 
 	if(joystick->index<2)
 	{
-		data=ReadJoyPort(joystick->index);
+		int index;
+		if (joystick->index == 0)index = 1;
+		else index = 0;
+		data=ReadJoyPort(index);
 
 		if(data&JP_DIRECTION_MASK)
 		{
 			if(data&JPF_JOY_DOWN)
 			{
+				
 				if(!(joystick->hwdata->joystate&JPF_JOY_DOWN))
-					SDL_PrivateJoystickAxis(joystick,0,127);
+					SDL_PrivateJoystickAxis(joystick,1,257);
 			}
 			else if(data&JPF_JOY_UP)
 			{
 				if(!(joystick->hwdata->joystate&JPF_JOY_UP))
-					SDL_PrivateJoystickAxis(joystick,0,-127);
+					SDL_PrivateJoystickAxis(joystick,1,-257);
 			}
 			else if(joystick->hwdata->joystate&(JPF_JOY_UP|JPF_JOY_DOWN))
-				SDL_PrivateJoystickAxis(joystick,0,0);
+				SDL_PrivateJoystickAxis(joystick,1,0);
 
 			if(data&JPF_JOY_LEFT)
 			{
 				if(!(joystick->hwdata->joystate&JPF_JOY_LEFT))
-					SDL_PrivateJoystickAxis(joystick,1,-127);
+					SDL_PrivateJoystickAxis(joystick,0,-257);
 			}
 			else if(data&JPF_JOY_RIGHT)
 			{
 				if(!(joystick->hwdata->joystate&JPF_JOY_RIGHT))
-					SDL_PrivateJoystickAxis(joystick,1,127);
+					SDL_PrivateJoystickAxis(joystick,0,257);
 			}
 			else if(joystick->hwdata->joystate&(JPF_JOY_LEFT|JPF_JOY_RIGHT))
-				SDL_PrivateJoystickAxis(joystick,1,0);
+				SDL_PrivateJoystickAxis(joystick,0,0);
 		}
 		else if(joystick->hwdata->joystate&(JPF_JOY_LEFT|JPF_JOY_RIGHT))
 		{
-				SDL_PrivateJoystickAxis(joystick,1,0);
+				SDL_PrivateJoystickAxis(joystick,0,0);
 		}
 		else if(joystick->hwdata->joystate&(JPF_JOY_UP|JPF_JOY_DOWN))
 		{
-				SDL_PrivateJoystickAxis(joystick,0,0);
+				SDL_PrivateJoystickAxis(joystick,1,0);
 		}
-
+ 
 		for(i=0;i<joystick->nbuttons;i++)
 		{
 			if( (data&joybut[i]) )

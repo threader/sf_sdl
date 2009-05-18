@@ -215,7 +215,7 @@ int CGX_SetupImage(_THIS, SDL_Surface *screen)
 		format = BMF_MINPLANES| BMF_SPECIALFMT|(PIXFMT_BGRA32<< 24);
 		friendbmap = 0;
 		}
-       
+        
 		if(!screen->hwdata) {
 			if(!(screen->hwdata=malloc(sizeof(struct private_hwdata))))
 				return -1;
@@ -225,7 +225,11 @@ int CGX_SetupImage(_THIS, SDL_Surface *screen)
 		screen->hwdata->lock=NULL;
 		screen->hwdata->allocated=0;
 		screen->hwdata->mask=NULL;
-		if (!(this->hidden->bmap=AllocBitMap(screen->w+1,screen->h+1,this->hidden->depth,format,friendbmap)))return -1;
+		
+		if (AvailMem(MEMF_LARGEST) < (screen->w * screen->h * (this->hidden->depth /8) + 500000))
+		{return -1;
+		}
+		if (!(this->hidden->bmap=AllocBitMap(screen->w,screen->h,this->hidden->depth,format,friendbmap)))return -1;
         screen->hwdata->bmap = this->hidden->bmap;
 		screen->hwdata->videodata=this;
 
@@ -243,7 +247,7 @@ int CGX_SetupImage(_THIS, SDL_Surface *screen)
         
 		screen->pitch=pitch;
         this->UpdateRects = CGX_NormalUpdate;
-
+        kprintf("HWSURFACE create\n");
 		D(bug("Accel video image configured (%lx, pitch %ld).\n",screen->pixels,screen->pitch));
 		return 0;
 	}
@@ -336,7 +340,7 @@ int CGX_AllocHWSurface(_THIS, SDL_Surface *surface)
 	surface->hwdata->videodata=this;
 	surface->hwdata->allocated=0;
    
-	if(surface->hwdata->bmap=AllocBitMap(surface->w+1,surface->h+1,this->hidden->depth,BMF_MINPLANES,SDL_Display->RastPort.BitMap))
+	if(surface->hwdata->bmap=AllocBitMap(surface->w,surface->h,this->hidden->depth,BMF_MINPLANES,SDL_Display->RastPort.BitMap))
 	{
 	
 		surface->hwdata->allocated=1;
@@ -583,11 +587,22 @@ static void CGX_NormalUpdate(_THIS, int numrects, SDL_Rect *rects)
 #endif
 	if (this->screen->flags &SDL_HWSURFACE)
 	{
-		
-		/*if(handle=LockBitMapTags(this->hidden->bmap,LBMI_BASEADDRESS,(ULONG)&bm_address,
-								LBMI_BYTESPERROW,(ULONG)&destpitch,TAG_DONE))*/
+		if (this->screen->hwdata->lock) // if there is a lock(only sdl_benchmark i see do this) we need release the look before call bltbitmaprastport
 		{
-       
+         UnLockBitMap(this->screen->hwdata->lock);
+		    
+         for ( i=0; i<numrects; ++i ) {
+					if ( ! rects[i].w ) { /* Clipped? */
+					continue;
+					}
+					BltBitMapRastPort(this->hidden->bmap,rects[i].x, rects[i].y,
+					SDL_Window->RPort,rects[i].x,rects[i].y,
+					rects[i].w,rects[i].h,0xc0);
+			}
+		 this->screen->hwdata->lock=LockBitMapTags(this->hidden->bmap,LBMI_BASEADDRESS,(ULONG)&this->screen->pixels,
+								LBMI_BYTESPERROW,(ULONG)&destpitch,TAG_DONE);
+		 return;
+		}
         for ( i=0; i<numrects; ++i ) {
 					if ( ! rects[i].w ) { /* Clipped? */
 					continue;
@@ -597,7 +612,7 @@ static void CGX_NormalUpdate(_THIS, int numrects, SDL_Rect *rects)
 					rects[i].w,rects[i].h,0xc0);
 			}
 	
-       }
+		
       return;
 	}
 	//if(this->hidden->same_format && !use_picasso96  && !this->hidden->swap_bytes)
@@ -840,22 +855,31 @@ static void CGX_NormalUpdate(_THIS, int numrects, SDL_Rect *rects)
 		APTR handle;
 
 //		D(bug("Using customroutine!\n"));
-#ifndef BITMAPMEM       
-		if(handle=LockBitMapTags(SDL_RastPort->BitMap,LBMI_BASEADDRESS,(ULONG)&bm_address,
-								LBMI_BYTESPERROW,(ULONG)&destpitch,TAG_DONE))
-#else
 
-for ( i=0; i<numrects; ++i ) {
+		if (!this->hidden->bmap)
+		{
+			handle=LockBitMapTags(SDL_RastPort->BitMap,LBMI_BASEADDRESS,(ULONG)&bm_address,
+								LBMI_BYTESPERROW,(ULONG)&destpitch,TAG_DONE);
+			if (!handle)return;
+
+		}
+		else
+		{
+
+			
+			for ( i=0; i<numrects; ++i ) {
 			if ( ! rects[i].w ) { /* Clipped? */
 				continue;
 			}
+
 			BltBitMapRastPort(this->hidden->bmap,rects[i].x, rects[i].y,
 					SDL_RastPort,/*SDL_Window->BorderLeft+*/rects[i].x,/*SDL_Window->BorderTop+*/rects[i].y,
 					rects[i].w,rects[i].h,0xc0);
+			}
+        return;
 		}
-        return 0;
-#endif
-		{
+	
+	{
 			unsigned char *destbase;
 			register int j,srcwidth;
 			register unsigned char *src,*dest;
@@ -898,9 +922,9 @@ for ( i=0; i<numrects; ++i ) {
 					dest+=destpitch;
 				}
 			}
-#ifdef BITMAPMEM
+
 			UnLockBitMap(handle);
-#endif
+
 //			D(bug("Rectblit addr: %lx pitch: %ld rects:%ld srcptr: %lx srcpitch: %ld\n",bm_address,destpitch,numrects,this->screen->pixels,this->screen->pitch));
 		}
 	}
@@ -933,6 +957,17 @@ void CGX_RefreshDisplay(_THIS)
 	}
     	if (this->screen->flags &SDL_HWSURFACE)
 	{
+		if (this->screen->hwdata->lock)
+		{
+					UnLockBitMap(this->screen->hwdata->lock);
+		            BltBitMapRastPort(this->hidden->bmap,0,0,
+					SDL_Window->RPort,0,0,
+					this->screen->w,this->screen->h,0xc0);
+
+					this->screen->hwdata->lock=LockBitMapTags(this->hidden->bmap,LBMI_BASEADDRESS,(ULONG)&this->screen->pixels,
+					LBMI_BYTESPERROW,(ULONG)&destpitch,TAG_DONE);
+		 return;
+		}
 					BltBitMapRastPort(this->hidden->bmap,0,0,
 					SDL_Window->RPort,0,0,
 					this->screen->w,this->screen->h,0xc0);
@@ -1119,11 +1154,21 @@ void CGX_RefreshDisplay(_THIS)
 		unsigned char *bm_address;
 		Uint32	destpitch;
 		APTR handle;
-
-		if(handle=LockBitMapTags(SDL_RastPort->BitMap,
-					LBMI_BASEADDRESS,(ULONG)&bm_address,
-					LBMI_BYTESPERROW,(ULONG)&destpitch,TAG_DONE))
+		if (!this->hidden->bmap)
 		{
+			handle=LockBitMapTags(SDL_RastPort->BitMap,LBMI_BASEADDRESS,(ULONG)&bm_address,
+								LBMI_BYTESPERROW,(ULONG)&destpitch,TAG_DONE);
+			if (!handle)return;
+
+		}
+		else
+		{
+			BltBitMapRastPort(this->hidden->bmap,0,0,
+					SDL_RastPort,/*SDL_Window->BorderLeft+*/0,/*SDL_Window->BorderTop+*/0,
+					this->screen->w,this->screen->h,0xc0);
+			
+        return;
+		}
 			register int j;
 			register unsigned char *src,*dest;
 
@@ -1151,7 +1196,6 @@ void CGX_RefreshDisplay(_THIS)
 			}
 
 			UnLockBitMap(handle);
-		}
 	}
 	else
 	{
