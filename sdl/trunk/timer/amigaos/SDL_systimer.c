@@ -32,6 +32,7 @@
 static char rcsid =
  "@(#) $Id: SDL_systimer.c,v 1.4 2008/09/29 20:54:05 rö Exp $";
 #endif
+#include <sdl/sdl.h>
 #include <devices/timer.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -164,7 +165,7 @@ struct timerequest * TimerIO_2;
 gettimerbase()
 {
     long error;
-  
+    atexit(SDL_Quit);
         if (TimerMP_2 = CreateMsgPort())
     {
     if (TimerIO_2 = (struct timerequest *)
@@ -206,6 +207,8 @@ void SDL_StartTicks(void)
   GetSysTime(&basetime);
 }
 
+#define ECLOCK
+
 Uint32 SDL_GetTicks (void)
 {
 	struct EClockVal time1;
@@ -214,20 +217,23 @@ Uint32 SDL_GetTicks (void)
 	struct timeval tv;
 	Uint32 ticks;
     if (!TimerBase)gettimerbase();
-    //GetSysTime(&tv);
-    efreq = ReadEClock(&time1);
-	eval = time1.ev_lo;
-	eval +=(time1.ev_hi << 32);
-	ticks = eval /(efreq/1000);
-	/*if(basetime.tv_micro > tv.tv_micro)
+#ifndef ECLOCK
+    GetSysTime(&tv);
+	if(basetime.tv_micro > tv.tv_micro)
 	{
 		tv.tv_secs --;
           
 		tv.tv_micro += 1000000;
-	}*/
-
-	//ticks = ((tv.tv_secs - basetime.tv_secs) * 1000) + ((tv.tv_micro - basetime.tv_micro)/1000);
+	}
+    ticks = ((tv.tv_secs - basetime.tv_secs) * 1000) + ((tv.tv_micro - basetime.tv_micro)/1000);
     
+#else
+    efreq = ReadEClock(&time1);
+	eval = time1.ev_lo;
+	eval +=(time1.ev_hi << 32);
+	ticks = eval /(efreq/1000);
+#endif
+	
 	return ticks;
 }
 
@@ -322,12 +328,16 @@ void SDL_SYS_TimerQuit(void)
 	
 	
 }
-void amiga_quit_timer(void) //called at end of sdl program
+void amiga_quit_timer(void) //called at end of sdl program from sdl.c
 {
-    //Delay(10);// safe that all subtasks end
-    CloseDevice((struct IORequest *) TimerIO_2);
-	DeleteIORequest(TimerIO_2);
-	DeleteMsgPort(TimerMP_2);
+    
+	if (TimerIO_2)
+	{
+		CloseDevice((struct IORequest *) TimerIO_2);
+		DeleteIORequest(TimerIO_2);
+		DeleteMsgPort(TimerMP_2);
+		TimerIO_2 = 0;
+	}
 }
 int SDL_SYS_StartTimer(void)
 {

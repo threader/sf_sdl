@@ -264,7 +264,7 @@ int CGX_FillHWRect(_THIS,SDL_Surface *dst,SDL_Rect *dstrect,Uint32 color)
 	if (dst->format->Bmask == 0x1f)
 	{
 		Uint32 r,g,b;
-		b = (color & 0x1f) << 3;  // from rgb16PC mode data must change to fit the rgb FillPixelArray format. 
+		b = (color & 0x1f) << 3;  // from rgb16 mode data must change to fit the argb FillPixelArray format. 
 		g = ((color >> 5) & 0x3f) << 2;
 		r = ((color >> 11) & 0x1f) << 3;
         color = b | (g << 8) | (r << 16);
@@ -276,8 +276,23 @@ int CGX_FillHWRect(_THIS,SDL_Surface *dst,SDL_Rect *dstrect,Uint32 color)
 			InitRastPort(&temprp);
 			temprp_init=1;
 		}
-
+        //kprintf("color %lx \n",color);
 		temprp.BitMap=(struct BitMap *)dst->hwdata->bmap;
+		if (dst->format->BitsPerPixel == 8)  //because CGX fillpixelarray dont work on 8 bit screens
+		{
+			if (this->screen->hwdata->lock)
+			{
+					UnLockBitMap(this->screen->hwdata->lock);
+		            SetAPen(&temprp,color);
+			        RectFill(&temprp,dstrect->x,dstrect->y,dstrect->w + dstrect->x ,dstrect->h + dstrect->y);
+					this->screen->hwdata->lock=LockBitMapTags(this->hidden->bmap,LBMI_BASEADDRESS,(ULONG)&this->screen->pixels,
+					TAG_DONE);
+		    return ;
+			}
+			SetAPen(&temprp,color);
+			        RectFill(&temprp,dstrect->x,dstrect->y,dstrect->w + dstrect->x ,dstrect->h + dstrect->y);
+		}
+		else
 		FillPixelArray(&temprp,dstrect->x,dstrect->y,dstrect->w,dstrect->h,color);
 	}
 	return 0;
