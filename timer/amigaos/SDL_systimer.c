@@ -206,8 +206,8 @@ void SDL_StartTicks(void)
  
   GetSysTime(&basetime);
 }
-
-#define ECLOCK
+ 
+//#define ECLOCK
 
 Uint32 SDL_GetTicks (void)
 {

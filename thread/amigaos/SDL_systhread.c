@@ -116,7 +116,7 @@ Uint32 RunThread(char * p1)
 	{
 	SDL_RunThread(data);
 	D(bug("Thread exited, signaling father (%lx)...\n",Father));
-	Signal(Father,SIGBREAKF_CTRL_FC);
+	Signal(Father,SIGBREAKF_CTRL_F);
 	D(bug("Thread with data %lx ended\n",data));
 	}
     #endif

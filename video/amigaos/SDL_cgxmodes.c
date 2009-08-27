@@ -246,7 +246,7 @@ SDL_Rect **CGX_ListModes(_THIS, SDL_PixelFormat *format, Uint32 flags)
 	int depth;
     if ( CGX_SupportedVisual(this, format) ) {
         if ( flags & SDL_FULLSCREEN ) {
-            return(SDL_modelist);
+            return((SDL_Rect **)-1);
         } else {
 			 
             sc=LockPubScreen(0);

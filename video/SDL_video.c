@@ -584,7 +584,9 @@ SDL_Surface * SDL_SetVideoMode (int width, int height, int bpp, Uint32 flags)
 	int is_opengl;
 	//int flags2 = flags;
 	SDL_GrabMode saved_grab;
-    
+#ifdef __AMIGA__
+    flags &= ~SDL_DOUBLEBUF;
+#endif
 	/* Start up the video driver, if necessary..
 	   WARNING: This is the only function protected this way!
 	 */
@@ -850,7 +852,9 @@ SDL_Surface * SDL_SetVideoMode (int width, int height, int bpp, Uint32 flags)
 		SDL_FreeSurface(mode);
 
 		/* Set the surface completely opaque & white by default */
+		
 		SDL_memset( SDL_VideoSurface->pixels, 255, SDL_VideoSurface->h * SDL_VideoSurface->pitch );
+
 		video->glGenTextures( 1, &video->texture );
 		video->glBindTexture( GL_TEXTURE_2D, video->texture );
 		video->glTexImage2D(
