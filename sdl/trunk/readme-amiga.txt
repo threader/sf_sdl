@@ -1,6 +1,7 @@
 SDL1.2.13 Version2 GCC linkerlibs
 
 *  sdl Threads can now work with ixemul, this allow much more programs get working.
+   sdl for working with libnix is named as libsdl_libnix.a and attached in adchive
 
 *  Joystick that is default on SDL Port 0 use now Amiga Port 1 so you need not remove your mouse and plug joystick in. 
     the second joystick use then Port 0

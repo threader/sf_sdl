@@ -355,6 +355,7 @@ void amiga_PumpEvents(_THIS)
 	mousey = -16000;
 	/* Keep processing pending events */
 	pending = 0;
+	
 	while ( m=(struct IntuiMessage *)GetMsg(SDL_Window->UserPort) ) {
 		amiga_DispatchEvent(this,m);
 		++pending;
@@ -626,15 +627,15 @@ SDL_keysym *amiga_TranslateKey(int code, int qual, SDL_keysym *keysym)
 		struct InputEvent	ie;
 		UBYTE	buffer[4];
         
-		qual &= ~(IEQUALIFIER_CONTROL|IEQUALIFIER_LALT|IEQUALIFIER_RALT);
-
+		//qual &= ~(IEQUALIFIER_CONTROL|IEQUALIFIER_LALT|IEQUALIFIER_RALT);
+        
 		ie.ie_Class				= IECLASS_RAWKEY;
 		ie.ie_SubClass			= 0;
 		ie.ie_Code				= code;
-		//ie.ie_Qualifier		  = SDL_TranslateUNICODE ? qual : qual & ~(IEQUALIFIER_LSHIFT|IEQUALIFIER_RSHIFT|IEQUALIFIER_CAPSLOCK);
-		ie.ie_Qualifier		= qual & ~(IEQUALIFIER_LSHIFT|IEQUALIFIER_RSHIFT|IEQUALIFIER_CAPSLOCK);
+		ie.ie_Qualifier		  = SDL_TranslateUNICODE ? qual : qual & ~(IEQUALIFIER_LSHIFT|IEQUALIFIER_RSHIFT|IEQUALIFIER_CAPSLOCK | IEQUALIFIER_CONTROL|IEQUALIFIER_LALT|IEQUALIFIER_RALT);
+		//ie.ie_Qualifier		= qual;// & ~(IEQUALIFIER_LSHIFT|IEQUALIFIER_RSHIFT|IEQUALIFIER_CAPSLOCK);
 		ie.ie_EventAddress	= NULL;
- 
+       
 		actual = MapRawKey(&ie, buffer, 4, NULL);
 
 		if (actual == 1)

@@ -292,7 +292,7 @@ Uint32 MakeBitMask(_THIS,int type,int format,int *bpp, struct SDL_Surface *scree
    
 	if(this->hidden->depth==*bpp)
 	{
-    //kprintf("Pixel Format %ld\n",format);
+    kprintf("Pixel Format %ld\n",format);
 	switch(format)
     	{
 		case PIXFMT_LUT8:
@@ -928,6 +928,7 @@ int CGX_CreateWindow(_THIS, SDL_Surface *screen,
 				{
 					case PIXFMT_RGB15PC:
 					case PIXFMT_RGB16PC:
+                    case PIXFMT_BGR16PC:
 						this->hidden->swap_bytes = 1; 
 						break;
                     case PIXFMT_BGRA32:
@@ -1027,9 +1028,9 @@ static SDL_Surface *CGX_SetVideoMode(_THIS, SDL_Surface *current,
 	int needcreate=0;
 	if (getenv("SDL_HWSURFACE"))flags |= SDL_HWSURFACE ;
 	if (getenv("SDL_SWSURFACE"))flags &= ~SDL_HWSURFACE ;
-	flags &= ~SDL_DOUBLEBUF;
+	//flags &= ~SDL_DOUBLEBUF;
 	D(bug("CGX_SetVideoMode current:%lx\n",current));
-
+    
 	/* Lock the event thread, in multi-threading environments */
 	SDL_Lock_EventThread();
 
@@ -1276,6 +1277,7 @@ static int CGX_ToggleFullScreen(_THIS, int on)
 
 static void SetSingleColor(Uint32 fmt, unsigned char r, unsigned char g, unsigned char b, unsigned char *c)
 {
+	
 	switch(fmt)
 	{
 		case PIXFMT_BGR15:
