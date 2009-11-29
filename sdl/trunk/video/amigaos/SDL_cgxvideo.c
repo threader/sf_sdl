@@ -44,6 +44,7 @@ static char rcsid =
 //#define FAKEDB
 #include "SDL_config.h" 
 #include <intuition/screens.h>
+#include <cybergraphics/cybergraphics.h>
 //#include "SDL.h"
 //#include "SDL_error.h"
 //#include "SDL_timer.h"
@@ -546,10 +547,26 @@ static int CGX_VideoInit(_THIS, SDL_PixelFormat *vformat)
 	}
 
 	D(bug("Checking if we are using a CGX native display...\n"));
-
+   
 	if(!IsCyberModeID(GetVPModeID(&SDL_Display->ViewPort)))
 	{
-		Uint32 okid=BestCModeIDTags(CYBRBIDTG_NominalWidth,SDL_Display->Width,
+		
+		Uint32 okid = INVALID_ID;
+		if (bpp == 32)
+		{
+			UWORD pixfmt[] ={PIXFMT_BGRA32,-1};
+		  unsigned long *ret;
+          struct CyberModeNode * cnode;
+		  ret = AllocCModeListTags(CYBRMREQ_MinWidth,SDL_Display->Width,CYBRMREQ_MinHeight,SDL_Display->Height,
+			  CYBRMREQ_MaxWidth,SDL_Display->Width+400,CYBRMREQ_MaxHeight,SDL_Display->Height+400,
+			  CYBRMREQ_MaxDepth,bpp,CYBRMREQ_MinDepth,bpp,CYBRMREQ_CModelArray,&pixfmt);
+			  if (ret)
+			  {cnode = *ret;
+               if(cnode)okid = cnode->DisplayID;
+			  }
+		}
+		else	
+		okid=BestCModeIDTags(CYBRBIDTG_NominalWidth,SDL_Display->Width,
 				CYBRBIDTG_NominalHeight,SDL_Display->Height,
 				CYBRBIDTG_Depth,bpp,
 				TAG_DONE);
@@ -888,7 +905,7 @@ int CGX_CreateWindow(_THIS, SDL_Surface *screen,
 				}
 				SDL_Window = OpenWindowTags(NULL,WA_Left,left,WA_Top,top,WA_Width,w,WA_Height,h, 
 											WA_Flags,WFLG_ACTIVATE|WFLG_RMBTRAP|WFLG_BORDERLESS | WFLG_REPORTMOUSE ,
-											WA_IDCMP,IDCMP_RAWKEY|IDCMP_MOUSEBUTTONS|IDCMP_MOUSEMOVE,
+											WA_IDCMP,IDCMP_RAWKEY|IDCMP_MOUSEBUTTONS|IDCMP_MOUSEMOVE |IDCMP_ACTIVEWINDOW|IDCMP_INACTIVEWINDOW,
 											WA_CustomScreen,(ULONG)SDL_Display,
 											TAG_DONE);
                 if (SDL_Window)
@@ -909,7 +926,7 @@ int CGX_CreateWindow(_THIS, SDL_Surface *screen,
                
 				SDL_Window = OpenWindowTags(NULL,WA_Left,left,WA_Top,top,WA_InnerWidth,w,WA_InnerHeight,h,
 											WA_Flags,WFLG_REPORTMOUSE|WFLG_ACTIVATE|WFLG_RMBTRAP | ((flags&SDL_NOFRAME) ? 0 : (WFLG_DEPTHGADGET|WFLG_CLOSEGADGET|WFLG_DRAGBAR | ((flags&SDL_RESIZABLE) ? WFLG_SIZEGADGET|WFLG_SIZEBBOTTOM : 0))),
-											WA_IDCMP,IDCMP_RAWKEY|IDCMP_CLOSEWINDOW|IDCMP_MOUSEBUTTONS|IDCMP_NEWSIZE|IDCMP_MOUSEMOVE,
+											WA_IDCMP,IDCMP_RAWKEY|IDCMP_CLOSEWINDOW|IDCMP_MOUSEBUTTONS|IDCMP_NEWSIZE|IDCMP_MOUSEMOVE |IDCMP_ACTIVEWINDOW |IDCMP_INACTIVEWINDOW,
 											WA_PubScreen,(ULONG)SDL_Display,
 											WA_GimmeZeroZero, gzz,
 														TAG_DONE);
@@ -1087,11 +1104,31 @@ static SDL_Surface *CGX_SetVideoMode(_THIS, SDL_Surface *current,
 		else
 buildnewscreen:
 		{
-            Uint32 okid=BestCModeIDTags(CYBRBIDTG_NominalWidth,width,
+			Uint32 okid=INVALID_ID;
+		/*if ((flags & SDL_OPENGL) && (bpp == 24))
+		{
+			bpp = 32;
+		}*/
+			if (bpp == 32)
+		{
+			UWORD pixfmt[] ={PIXFMT_BGRA32,-1};
+		  unsigned long *ret;
+          struct CyberModeNode * cnode;
+		  ret = AllocCModeListTags(CYBRMREQ_MinWidth,width,CYBRMREQ_MinHeight,height,
+			  CYBRMREQ_MaxWidth,width+1000,CYBRMREQ_MaxHeight,height+1000,
+			  CYBRMREQ_MaxDepth,bpp,CYBRMREQ_MinDepth,32,CYBRMREQ_CModelArray,&pixfmt);
+			  if (ret)
+					{cnode = *ret;
+					if (cnode)okid = cnode->DisplayID;
+					}
+		}
+		if (okid == INVALID_ID)
+		{
+				okid=BestCModeIDTags(CYBRBIDTG_NominalWidth,width,
 				CYBRBIDTG_NominalHeight,height,
 				CYBRBIDTG_Depth,bpp,
 				TAG_DONE);
-           
+		}  
 
 
             GFX_Display=NULL;
