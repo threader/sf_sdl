@@ -282,7 +282,7 @@ if (tr == NULL )
 			ULONG running = SDL_timer_running;
 
 			tv.tv_secs  = 0;
-			tv.tv_micro = 8000;
+			tv.tv_micro = 4000;
 
 			wait_for_timer( tr, &tv );
 			//time_delay(&tv, UNIT_MICROHZ );

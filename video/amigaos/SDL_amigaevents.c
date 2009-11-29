@@ -167,8 +167,7 @@ static int amiga_GetButton(int code)
 	}
 }
 
-int mousex;
-int mousey;
+static int mousex,mousey, oldtaskpri ;
 
 static int amiga_DispatchEvent(_THIS,struct IntuiMessage *msg)
 {
@@ -176,17 +175,32 @@ static int amiga_DispatchEvent(_THIS,struct IntuiMessage *msg)
 	int posted;
     
 	posted = 0;
-	
+APTR  *fh =0;	
 	
 	switch (class) {
 	    /* Gaining mouse coverage? */
 	    case IDCMP_ACTIVEWINDOW:
 			posted = SDL_PrivateAppActive(1, SDL_APPMOUSEFOCUS);
+			fh = Open("env:SDL_NOLOWERTASKPRI",1005);
+			if (!fh)
+			{
+				if (oldtaskpri ==0)SetTaskPri(FindTask(0),0); 
+				
+			}
+			if (fh)Close(fh);
 			break;
 
 	    /* Losing mouse coverage? */
 	    case IDCMP_INACTIVEWINDOW:
 			posted = SDL_PrivateAppActive(0, SDL_APPMOUSEFOCUS);
+			fh = Open("env:SDL_NOLOWERTASKPRI",1005);
+			if (!fh)
+			{
+				oldtaskpri = SetTaskPri(FindTask(0),-1);
+				if (oldtaskpri != 0)SetTaskPri(FindTask(0),oldtaskpri); // only a thread with pri 0 is lower 
+			   
+			}
+			if (fh)Close(fh);
 			break;
 #if 0
 	    /* Gaining input focus? */
