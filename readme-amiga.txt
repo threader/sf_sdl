@@ -1,3 +1,20 @@
+SDL1.2.14
+
+when open a own screen sdl try first to get a RGB16 Screen or when 32 bit screen want BGRA32 screenmode.If that fail it use whats here and write a message not optimal screenmode.
+
+Add functions to access SDL window window addr (to move/ resize or add a menu to it(usefull if you want a SDL program use with arexx and external GUI) 
+
+SDL_AmigaLockWindow(); // to avoid that the sdl app close the window do always a look as long you access the window pointer.
+  struct Window * win = SDL_AmigaWindowAddr();
+if (win)  // do only something if the address is get
+  {
+ 	........
+  }
+  
+  SDL_AmigaUnlockWindow();
+
+
+
 SDL1.2.13 Version2 GCC linkerlibs
 
 *  sdl Threads can now work with ixemul, this allow much more programs get working.

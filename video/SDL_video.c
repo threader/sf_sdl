@@ -509,7 +509,9 @@ static void SDL_ClearSurface(SDL_Surface *surface)
 		SDL_Flip(surface);
 		SDL_FillRect(surface, NULL, black);
 	}
-	SDL_Flip(surface);
+	if (surface->flags&SDL_FULLSCREEN) {
+		SDL_Flip(surface);
+	}
 }
 
 /*
@@ -643,6 +645,7 @@ SDL_Surface * SDL_SetVideoMode (int width, int height, int bpp, Uint32 flags)
 	/* Reset the keyboard here so event callbacks can run */
 	SDL_ResetKeyboard();
 	SDL_ResetMouse();
+        SDL_SetMouseRange(width, height);
 	SDL_cursorstate &= ~CURSOR_USINGSW;
 
 	/* Clean up any previous video mode */
@@ -1142,7 +1145,7 @@ int SDL_Flip(SDL_Surface *screen)
 					SDL_VideoSurface, &rect);
 			SDL_EraseCursor(SDL_ShadowSurface);
 			SDL_UnlockCursor();
-		} else {
+		} else { 
 			SDL_LowerBlit(SDL_ShadowSurface, &rect,
 					SDL_VideoSurface, &rect);
 		}

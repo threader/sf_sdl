@@ -59,7 +59,7 @@ static void set_best_resolution(_THIS, int width, int height)
 				CYBRBIDTG_NominalHeight,height,
 				CYBRBIDTG_Depth,depth,
 				TAG_DONE);
-     //kprintf(" depth %ld display id %ld \n",depth,idok);
+     kprintf(" depth %ld display id %ld \n",depth,idok);
 	if(idok!=INVALID_ID)
 	{
 		if(SDL_Display)

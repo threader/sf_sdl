@@ -1,6 +1,6 @@
 /*
     SDL - Simple DirectMedia Layer
-    Copyright (C) 1997-2006 Sam Lantinga
+    Copyright (C) 1997-2009 Sam Lantinga
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
@@ -108,8 +108,8 @@
 #endif
 
 #define PIXEL_COPY(to, from, len, bpp)			\
-do {	 \
-    if(bpp == 4) {				\
+do {							\
+    if(bpp == 4) {					\
 	SDL_memcpy4(to, from, (size_t)(len));		\
     } else {						\
 	SDL_memcpy(to, from, (size_t)(len) * (bpp));	\
@@ -1009,7 +1009,7 @@ typedef struct {
 	Uint32 Bmask;
 	Uint32 Amask;
 } RLEDestFormat;
- 
+
 /* blit a pixel-alpha RLE surface clipped at the right and/or left edges */
 static void RLEAlphaClipBlit(int w, Uint8 *srcbuf, SDL_Surface *dst,
 			     Uint8 *dstbuf, SDL_Rect *srcrect)

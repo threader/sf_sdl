@@ -241,25 +241,37 @@ static int CGX_HWAccelBlit(SDL_Surface *src, SDL_Rect *srcrect,
 				temprp_init=1;
 			}
 			temprp.BitMap=(struct BitMap *)dst->hwdata->bmap;
-
+            if (temprp.BitMap)
 			BMKBRP(src->hwdata->bmap,srcrect->x,srcrect->y,
 						&temprp,dstrect->x,dstrect->y,
+						srcrect->w,srcrect->h,0xc0,src->hwdata->mask);
+			else
+			BMKBRP(src->hwdata->bmap,srcrect->x,srcrect->y,
+						SDL_RastPort,dstrect->x,dstrect->y,
 						srcrect->w,srcrect->h,0xc0,src->hwdata->mask);
 			
 		}
 	}
-	//else if(dst==SDL_VideoSurface)
-	//{
-	//	BBRP(src->hwdata->bmap,srcrect->x,srcrect->y,SDL_Window->RPort,dstrect->x/*+SDL_Window->BorderLeft*/,dstrect->y/*+SDL_Window->BorderTop*/,srcrect->w,srcrect->h,0xc0);
-	//}
-	else if(dst->hwdata)
+	
+	/*if(dst==SDL_VideoSurface)
+	{
+		long b_src;
+		if (!src->hwdata->bmap)b_src = SDL_RastPort->BitMap;
+		else b_src = src->hwdata->bmap;
+		BBRP(b_src,srcrect->x,srcrect->y,SDL_RastPort,dstrect->x+SDL_Window->BorderLeft,dstrect->y+SDL_Window->BorderTop,srcrect->w,srcrect->h,0xc0);
+	}*/
+	else if(dst->hwdata->bmap)
 		BBB(src->hwdata->bmap,srcrect->x,srcrect->y,dst->hwdata->bmap,dstrect->x,dstrect->y,srcrect->w,srcrect->h,0xc0,0xff,NULL);
-
+	else if(!dst->hwdata->bmap)
+		BBB(src->hwdata->bmap,srcrect->x,srcrect->y,SDL_RastPort->BitMap,dstrect->x,dstrect->y,srcrect->w,srcrect->h,0xc0,0xff,NULL);
+    
 	return 0;
 }
 
 int CGX_FillHWRect(_THIS,SDL_Surface *dst,SDL_Rect *dstrect,Uint32 color)
 {
+	unsigned int handle;
+
 	if (dst->format->Bmask == 0xff000000)color = SDL_Swap32(color); // for bgra32 mode data must swap.
 	if (dst->format->Bmask == 0x1f)
 	{
@@ -277,15 +289,17 @@ int CGX_FillHWRect(_THIS,SDL_Surface *dst,SDL_Rect *dstrect,Uint32 color)
 			temprp_init=1;
 		}
         //kprintf("color %lx \n",color);
+		
 		temprp.BitMap=(struct BitMap *)dst->hwdata->bmap;
+		if (temprp.BitMap == 0)temprp.BitMap = SDL_RastPort->BitMap;
 		if (dst->format->BitsPerPixel == 8)  //because CGX fillpixelarray dont work on 8 bit screens
-		{
+		{ 
 			if (this->screen->hwdata->lock)
 			{
 					UnLockBitMap(this->screen->hwdata->lock);
 		            SetAPen(&temprp,color);
 			        RectFill(&temprp,dstrect->x,dstrect->y,dstrect->w + dstrect->x ,dstrect->h + dstrect->y);
-					this->screen->hwdata->lock=LockBitMapTags(this->hidden->bmap,LBMI_BASEADDRESS,(ULONG)&this->screen->pixels,
+					this->screen->hwdata->lock=LockBitMapTags(temprp.BitMap,LBMI_BASEADDRESS,(ULONG)&this->screen->pixels,
 					TAG_DONE);
 		    return ;
 			}

@@ -68,10 +68,12 @@ static char rcsid =
 #include <stdlib.h>
 #include <proto/alib.h>
 #endif
-
+#ifdef __cplusplus
+extern "C" {
+#endif
 //#define Bug kprintf
 
-
+unsigned long _sdl_windowaddr;
 
 /* Initialization/Query functions */
 static int CGX_VideoInit(_THIS, SDL_PixelFormat *vformat);
@@ -80,12 +82,27 @@ static int CGX_ToggleFullScreen(_THIS, int on);
 static void CGX_UpdateMouse(_THIS);
 static int CGX_SetColors(_THIS, int firstcolor, int ncolors, SDL_Color *colors);
 static void CGX_VideoQuit(_THIS);
-
+static struct SignalSemaphore sem;
 /* CGX driver bootstrap functions */
 
 struct Library *CyberGfxBase=NULL;
 struct IntuitionBase *IntuitionBase=NULL;
 struct GfxBase *GfxBase=NULL;
+
+void SDL_AmigaLockWindow()
+{
+ObtainSemaphore (&sem);
+}
+
+void SDL_AmigaUnlockWindow()
+{
+ReleaseSemaphore (&sem);
+}
+
+struct Window * SDL_AmigaWindowAddr(void)
+{
+  return _sdl_windowaddr;
+}
 
 int CGX_SetGamma(_THIS, float red, float green, float blue)
 {
@@ -210,7 +227,7 @@ static void CGX_DeleteDevice(SDL_VideoDevice *device)
 static SDL_VideoDevice *CGX_CreateDevice(int devindex)
 {
 	SDL_VideoDevice *device;
-
+    InitSemaphore(&sem);
 	/* Initialize all variables that we clean on shutdown */
 	device = (SDL_VideoDevice *)malloc(sizeof(SDL_VideoDevice));
 	if ( device ) {
@@ -549,7 +566,7 @@ static int CGX_VideoInit(_THIS, SDL_PixelFormat *vformat)
 	D(bug("Checking if we are using a CGX native display...\n"));
    
 	if(!IsCyberModeID(GetVPModeID(&SDL_Display->ViewPort)))
-	{
+	{  //selden reach
 		
 		Uint32 okid = INVALID_ID;
 		if (bpp == 32)
@@ -558,27 +575,42 @@ static int CGX_VideoInit(_THIS, SDL_PixelFormat *vformat)
 		  unsigned long *ret;
           struct CyberModeNode * cnode;
 		  ret = AllocCModeListTags(CYBRMREQ_MinWidth,SDL_Display->Width,CYBRMREQ_MinHeight,SDL_Display->Height,
-			  CYBRMREQ_MaxWidth,SDL_Display->Width+400,CYBRMREQ_MaxHeight,SDL_Display->Height+400,
+			  CYBRMREQ_MaxWidth,SDL_Display->Width+1000,CYBRMREQ_MaxHeight,SDL_Display->Height+1000,
 			  CYBRMREQ_MaxDepth,bpp,CYBRMREQ_MinDepth,bpp,CYBRMREQ_CModelArray,&pixfmt);
 			  if (ret)
 			  {cnode = *ret;
                if(cnode)okid = cnode->DisplayID;
 			  }
 		}
-		else	
+		if (bpp == 16)
+		{
+			UWORD pixfmt[] ={PIXFMT_RGB16,-1};
+		  unsigned long *ret;
+          struct CyberModeNode * cnode;
+		  ret = AllocCModeListTags(CYBRMREQ_MinWidth,SDL_Display->Width,CYBRMREQ_MinHeight,SDL_Display->Height,
+			  CYBRMREQ_MaxWidth,SDL_Display->Width+1000,CYBRMREQ_MaxHeight,SDL_Display->Height+1000,
+			  CYBRMREQ_MaxDepth,bpp,CYBRMREQ_MinDepth,16,CYBRMREQ_CModelArray,&pixfmt);
+			  if (ret)
+					{cnode = *ret;
+					if (cnode)okid = cnode->DisplayID;
+					}
+		}
+		kprintf("%screenmode ID%ld\n",okid);
+		if (okid == INVALID_ID)
+		{
 		okid=BestCModeIDTags(CYBRBIDTG_NominalWidth,SDL_Display->Width,
 				CYBRBIDTG_NominalHeight,SDL_Display->Height,
 				CYBRBIDTG_Depth,bpp,
 				TAG_DONE);
-		
-        D(bug("Default visual is not CGX native!\n"));
+		}
+        
 
 		UnlockPubScreen(NULL,SDL_Display);
 
 		GFX_Display=NULL;
-
+        
 		if(okid!=INVALID_ID)
-		{
+		{  //selden reach
 			
 			GFX_Display=OpenScreenTags(NULL,
 									//SA_Width,SDL_Display->Width,
@@ -589,6 +621,7 @@ static int CGX_VideoInit(_THIS, SDL_PixelFormat *vformat)
 									SA_DisplayID,okid,
 									TAG_DONE);
 		}
+		else kprintf("Cant get a valid screenmode ID with BestCModeIDTags\n");
 
 		if(!GFX_Display)
 		{
@@ -694,7 +727,7 @@ static int CGX_VideoInit(_THIS, SDL_PixelFormat *vformat)
 void CGX_DestroyWindow(_THIS, SDL_Surface *screen)
 {
 	D(bug("Destroy Window...\n"));
-
+   
 	if ( ! SDL_windowid ) {
 		/* Hide the managed window */
 		int was_fullscreen=0;
@@ -711,13 +744,16 @@ void CGX_DestroyWindow(_THIS, SDL_Surface *screen)
 		}
 
 		/* Destroy the output window */
+		SDL_AmigaLockWindow();
 		if ( SDL_Window ) {
 			CloseWindow(SDL_Window);
 			if (SDL_Window_Background)CloseWindow(SDL_Window_Background);
 			SDL_Window=NULL;
+			_sdl_windowaddr = 0;
             SDL_Window_Background=NULL;
 			
 		}
+		SDL_AmigaUnlockWindow();
 
 		/* Free the colormap entries */
 		if ( SDL_XPixels ) {
@@ -945,7 +981,7 @@ int CGX_CreateWindow(_THIS, SDL_Surface *screen,
 				{
 					case PIXFMT_RGB15PC:
 					case PIXFMT_RGB16PC:
-                    case PIXFMT_BGR16PC:
+					case PIXFMT_BGR16PC:
 						this->hidden->swap_bytes = 1; 
 						break;
                     case PIXFMT_BGRA32:
@@ -1012,6 +1048,7 @@ int CGX_CreateWindow(_THIS, SDL_Surface *screen,
 				screen->flags |= SDL_OPENGL;
 		}
 	}
+	_sdl_windowaddr = SDL_Window;
 	kprintf("bit %ld byte / Pixel %ld render buffer addr %lx \n",screen->format->BitsPerPixel,this->hidden->BytesPerPixel,screen->pixels);
 	return 0;
 }
@@ -1050,6 +1087,7 @@ static SDL_Surface *CGX_SetVideoMode(_THIS, SDL_Surface *current,
     
 	/* Lock the event thread, in multi-threading environments */
 	SDL_Lock_EventThread();
+	SDL_AmigaLockWindow();
 
 // Check if the window needs to be closed or can be resized
 
@@ -1116,18 +1154,36 @@ buildnewscreen:
           struct CyberModeNode * cnode;
 		  ret = AllocCModeListTags(CYBRMREQ_MinWidth,width,CYBRMREQ_MinHeight,height,
 			  CYBRMREQ_MaxWidth,width+1000,CYBRMREQ_MaxHeight,height+1000,
-			  CYBRMREQ_MaxDepth,bpp,CYBRMREQ_MinDepth,32,CYBRMREQ_CModelArray,&pixfmt);
+			  CYBRMREQ_MaxDepth,bpp,CYBRMREQ_MinDepth,32,CYBRMREQ_CModelArray,&pixfmt,TAG_END);
 			  if (ret)
 					{cnode = *ret;
 					if (cnode)okid = cnode->DisplayID;
 					}
 		}
+		if (bpp == 16)
+		{ 
+			UWORD pixfmt[] ={PIXFMT_RGB16,-1};
+		  unsigned long *ret;
+          struct CyberModeNode * cnode;
+		  ret = AllocCModeListTags(CYBRMREQ_MinWidth,width,CYBRMREQ_MinHeight,height,
+			  CYBRMREQ_MaxWidth,width+1000,CYBRMREQ_MaxHeight,height+1000,
+			  CYBRMREQ_MaxDepth,bpp,CYBRMREQ_MinDepth,16,CYBRMREQ_CModelArray,&pixfmt,TAG_END);
+			  if (ret)
+					{cnode = *ret;
+					if (cnode)okid = cnode->DisplayID;
+					}
+		if (!IsCyberModeID(okid))okid = INVALID_ID;
+		kprintf(" RGB16  Mode ID %lx\n",okid);			
+		}
+		
+		
 		if (okid == INVALID_ID)
 		{
 				okid=BestCModeIDTags(CYBRBIDTG_NominalWidth,width,
 				CYBRBIDTG_NominalHeight,height,
 				CYBRBIDTG_Depth,bpp,
 				TAG_DONE);
+		kprintf("No Optimal Mode ID %lx\n",okid);		
 		}  
 
 
@@ -1154,10 +1210,12 @@ buildnewscreen:
 								SA_DisplayID,okid,
 								TAG_DONE);
 			}
+			else kprintf("2: Cant get a valid screenmode ID with BestCModeIDTags\n");
 			if(!GFX_Display) {
 				GFX_Display=SDL_Display;
 				flags &= ~SDL_FULLSCREEN;
 				flags &= ~SDL_DOUBLEBUF;
+				kprintf("Screen cant open \n");
 			}
 			else {
 				UnlockPubScreen(NULL,SDL_Display);
@@ -1272,6 +1330,7 @@ buildnewscreen:
 	Delay(1);
 	/* Release the event thread */
 	SDL_Unlock_EventThread();
+	SDL_AmigaUnlockWindow();
 
 	/* We're done! */
 	return(current);
@@ -1550,8 +1609,4 @@ static void CGX_VideoQuit(_THIS)
 	D(bug("End of CGX_VideoQuit.\n"));
 
 }
-struct Window * SDL_GetAmigaWindow(_THIS)
-{
-	return SDL_Window;
-}
-
+ 
