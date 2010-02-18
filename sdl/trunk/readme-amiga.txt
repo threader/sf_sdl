@@ -1,4 +1,27 @@
+Important notes:
+
+If you dont need opengl then the agl.library need not load.you can link with -lgl_dummy and the agl.library is not load.
+If you want use SDL with libnix you must link with -lsdl_libnix or you get linker error.
+
+but: NEVER USE sdl_libnix WITH ixemul because as soon a SDL program call a unix API func(memalloc / fileaccess) in a subthread ixemul crash.
+       So libsdl.a is need and the new V61 and above ixemul to run well. 
+
+All needed files are in lib dir.
+In bin dir are the files that are need that a configure script detect SDL correct with pkgconfig.copy the files to your bin path.
+when you do crosscompile and have more compilers, be careful i dont know a way how more than 1 pkgconfig can work together.
+
+-----------------------------
+
 SDL1.2.14
+
+For whats new in SDL 1.2.14 see the attached doc.this are amiga enhancements only
+
+when the SDL Window is not active then the SDL app is switch to TaskPri -1. This help to make your Amiga Desktop always fast, even if a
+SDL App need 100% CPU load.
+
+If you dont like the feature you can switch it off with that enviroment variable.
+ 
+SDL_NoLowerTaskPri 
 
 when open a own screen sdl try first to get a RGB16 Screen or when 32 bit screen want BGRA32 screenmode.If that fail it use whats here and write a message not optimal screenmode.
 
