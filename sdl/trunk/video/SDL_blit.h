@@ -1,6 +1,6 @@
 /*
     SDL - Simple DirectMedia Layer
-    Copyright (C) 1997-2006 Sam Lantinga
+    Copyright (C) 1997-2009 Sam Lantinga
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
@@ -23,7 +23,6 @@
 
 #ifndef _SDL_blit_h
 #define _SDL_blit_h
-#define FAST16BIT 5      // the green bitshift offset for 16 bit code without drop 3 green bits
 
 #include "SDL_endian.h"
 
@@ -167,8 +166,7 @@ do {									   \
 } while(0)
 
 /* Assemble R-G-B values into a specified pixel format and store them */
-
-#ifdef __NDS__ // FIXME
+#ifdef __NDS__ /* FIXME */
 #define PIXEL_FROM_RGB(Pixel, fmt, r, g, b)				\
 {									\
 	Pixel = ((r>>fmt->Rloss)<<fmt->Rshift)|				\
@@ -182,7 +180,7 @@ do {									   \
 		((g>>fmt->Gloss)<<fmt->Gshift)|				\
 		((b>>fmt->Bloss)<<fmt->Bshift);				\
 }
-#endif // __NDS__ FIXME
+#endif /* __NDS__ FIXME */
 #define RGB565_FROM_RGB(Pixel, r, g, b)					\
 {									\
 	Pixel = ((r>>3)<<11)|((g>>2)<<5)|(b>>3);			\
@@ -202,7 +200,7 @@ do {									   \
 			Uint16 Pixel;					\
 									\
 			PIXEL_FROM_RGB(Pixel, fmt, r, g, b);		\
-			*((Uint16 *)(buf)) = (Pixel);			\
+			*((Uint16 *)(buf)) = Pixel;			\
 		}							\
 		break;							\
 									\
@@ -272,7 +270,7 @@ do {									   \
 	r = ((Pixel&fmt->Rmask)>>fmt->Rshift)<<fmt->Rloss; 		\
 	g = ((Pixel&fmt->Gmask)>>fmt->Gshift)<<fmt->Gloss; 		\
 	b = ((Pixel&fmt->Bmask)>>fmt->Bshift)<<fmt->Bloss; 		\
-    a =((Pixel&fmt->Amask)>>fmt->Ashift)<<fmt->Aloss;	 	\
+	a = ((Pixel&fmt->Amask)>>fmt->Ashift)<<fmt->Aloss;	 	\
 }
 #define RGBA_FROM_8888(Pixel, fmt, r, g, b, a)	\
 {						\
@@ -326,20 +324,13 @@ do {									   \
 		default:						   \
 		        Pixel = 0; /* stop gcc complaints */		   \
 		break;							   \
-	}	if (fmt->Gloss == FAST16BIT)							   \
-	   {  /*a = ((Pixel&fmt->Amask)>>fmt->Ashift)<<fmt->Aloss;*/\	 	
-          Pixel = SDL_Swap16(Pixel);\ 
-          r = ((Pixel >> 11)&0x1f); 		\
-	      g = ((Pixel >> 5) &0x3f); 		\
-	      b = (Pixel & 0x1f); 		\
-	   }                                                   \
-     else                                                  \
+	}								   \
 	RGBA_FROM_PIXEL(Pixel, fmt, r, g, b, a);			   \
 	Pixel &= ~fmt->Amask;						   \
 } while(0)
 
 /* FIXME: this isn't correct, especially for Alpha (maximum != 255) */
-#ifdef __NDS__ // FIXME
+#ifdef __NDS__ /* FIXME */
 #define PIXEL_FROM_RGBA(Pixel, fmt, r, g, b, a)				\
 {									\
 	Pixel = ((r>>fmt->Rloss)<<fmt->Rshift)|				\
@@ -349,40 +340,34 @@ do {									   \
 }
 #else
 #define PIXEL_FROM_RGBA(Pixel, fmt, r, g, b, a)				\
-{	 \
-Pixel = ((r>>fmt->Rloss)<<fmt->Rshift)|				\
+{									\
+	Pixel = ((r>>fmt->Rloss)<<fmt->Rshift)|				\
 		((g>>fmt->Gloss)<<fmt->Gshift)|				\
 		((b>>fmt->Bloss)<<fmt->Bshift)|				\
 		((a>>fmt->Aloss)<<fmt->Ashift);				\
-													\
-} 
-
-#endif // __NDS__ FIXME
-
+}
+#endif /* __NDS__ FIXME */
 #define ASSEMBLE_RGBA(buf, bpp, fmt, r, g, b, a)			\
 {									\
 	switch (bpp) {							\
 		case 2: {						\
 			Uint16 Pixel;					\
-		if (fmt->Gloss==FAST16BIT)\
-		{  \
-		 Pixel =  SDL_Swap16(((g>>2)<<5)|	\
-        ((r>>3)<<11)|				\
-		(b>>3));	\			
-			*((Uint16 *)(buf)) = Pixel; 	\
-		}                                           \
-		else \
+									\
 			PIXEL_FROM_RGBA(Pixel, fmt, r, g, b, a);	\
-			*((Uint16 *)(buf)) =  (Pixel);			\
+			*((Uint16 *)(buf)) = Pixel;			\
 		}							\
 		break;							\
 									\
 		case 3: { /* FIXME: broken code (no alpha) */		\
-              				\
+                        if(SDL_BYTEORDER == SDL_LIL_ENDIAN) {		\
+			        *((buf)+fmt->Rshift/8) = r;		\
+				*((buf)+fmt->Gshift/8) = g;		\
+				*((buf)+fmt->Bshift/8) = b;		\
+			} else {					\
 			        *((buf)+2-fmt->Rshift/8) = r;		\
 				*((buf)+2-fmt->Gshift/8) = g;		\
 				*((buf)+2-fmt->Bshift/8) = b;		\
-								\
+			}						\
 		}							\
 		break;							\
 									\
@@ -399,22 +384,9 @@ Pixel = ((r>>fmt->Rloss)<<fmt->Rshift)|				\
 /* Blend the RGB values of two Pixels based on a source alpha value */
 #define ALPHA_BLEND(sR, sG, sB, A, dR, dG, dB)	\
 do {						\
-	dR = (((sR-dR)*(A))>>8)+dR;		\
-	dG = (((sG-dG)*(A))>>8)+dG;		\
-	dB = (((sB-dB)*(A))>>8)+dB;		\
-} while(0)
-
-/* Blend the RGB values of two Pixels based on a source alpha value */
-#define ACCURATE_ALPHA_BLEND(sR, sG, sB, sA, dR, dG, dB)	\
-do {						\
-    unsigned tR, tG, tB, tA; \
-    tA = 255 - sA; \
-    tR = 1 + (sR * sA) + (dR * tA); \
-    dR = (tR + (tR >> 8)) >> 8; \
-    tG = 1 + (sG * sA) + (dG * tA); \
-    dG = (tG + (tG >> 8)) >> 8; \
-    tB = 1 + (sB * sA) + (dB * tA); \
-    dB = (tB + (tB >> 8)) >> 8; \
+	dR = (((sR-dR)*(A)+255)>>8)+dR;		\
+	dG = (((sG-dG)*(A)+255)>>8)+dG;		\
+	dB = (((sB-dB)*(A)+255)>>8)+dB;		\
 } while(0)
 
 

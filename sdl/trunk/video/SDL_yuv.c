@@ -1,6 +1,6 @@
 /*
     SDL - Simple DirectMedia Layer
-    Copyright (C) 1997-2006 Sam Lantinga
+    Copyright (C) 1997-2009 Sam Lantinga
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
@@ -43,9 +43,7 @@ SDL_Overlay *SDL_CreateYUVOverlay(int w, int h, Uint32 format,
 	}
 
 	/* Display directly on video surface, if possible */
-	
-	if ( SDL_getenv("SDL_VIDEO_YUV_DIRECT") )
-	    {
+	if ( SDL_getenv("SDL_VIDEO_YUV_DIRECT") ) {
 		if ( (display == SDL_PublicSurface) &&
 		     ((SDL_VideoSurface->format->BytesPerPixel == 2) ||
 		      (SDL_VideoSurface->format->BytesPerPixel == 4)) ) {

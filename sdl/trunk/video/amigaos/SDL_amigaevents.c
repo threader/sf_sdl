@@ -22,7 +22,7 @@
 #ifdef AROS
 #  define _STRUCT_TIMEVAL	1
 #endif
-
+long _sdl_no_lower_taskpri;
 #ifdef SAVE_RCSID
 static char rcsid =
  "@(#) $Id: SDL_amigaevents.c,v 1.2 2008/11/20 08:51:17 roesch bernd Exp $";
@@ -54,6 +54,11 @@ struct MsgPort *ConPort=NULL;
    warping the pointer when it reaches the edge, and then wait for it.
 */
 #define MOUSE_FUDGE_FACTOR	8
+
+SDL_AmigaNoLowerTaskpri ()
+{
+_sdl_no_lower_taskpri = 1;	
+}
 
 SDL_bool SDL_HasMMX(void)
 {
@@ -181,26 +186,31 @@ APTR  *fh =0;
 	    /* Gaining mouse coverage? */
 	    case IDCMP_ACTIVEWINDOW:
 			posted = SDL_PrivateAppActive(1, SDL_APPMOUSEFOCUS);
-			fh = Open("env:SDL_NOLOWERTASKPRI",1005);
-			if (!fh)
+			if (!_sdl_no_lower_taskpri)
 			{
+				fh = Open("env:SDL_NOLOWERTASKPRI",1005);
+				if (!fh)
+				{
 				if (oldtaskpri ==0)SetTaskPri(FindTask(0),0); 
-				
-			}
+				}
 			if (fh)Close(fh);
+			}
 			break;
 
 	    /* Losing mouse coverage? */
 	    case IDCMP_INACTIVEWINDOW:
 			posted = SDL_PrivateAppActive(0, SDL_APPMOUSEFOCUS);
-			fh = Open("env:SDL_NOLOWERTASKPRI",1005);
-			if (!fh)
+			if (!_sdl_no_lower_taskpri)
 			{
+				fh = Open("env:SDL_NOLOWERTASKPRI",1005);
+				if (!fh)
+				{
 				oldtaskpri = SetTaskPri(FindTask(0),-1);
 				if (oldtaskpri != 0)SetTaskPri(FindTask(0),oldtaskpri); // only a thread with pri 0 is lower 
 			   
+				}
+				if (fh)Close(fh);
 			}
-			if (fh)Close(fh);
 			break;
 #if 0
 	    /* Gaining input focus? */

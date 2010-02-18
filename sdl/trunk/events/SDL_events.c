@@ -1,6 +1,6 @@
 /*
     SDL - Simple DirectMedia Layer
-    Copyright (C) 1997-2006 Sam Lantinga
+    Copyright (C) 1997-2009 Sam Lantinga
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
@@ -39,7 +39,6 @@ static Uint32 SDL_eventstate = 0;
 
 /* Private data -- event queue */
 #define MAXEVENTS	128
-
 static struct {
 	SDL_mutex *lock;
 	int active;
@@ -57,7 +56,7 @@ static struct {
 } SDL_EventLock;
 
 /* Thread functions */
-static unsigned long *SDL_EventThread = NULL;	/* Thread handle */
+static SDL_Thread *SDL_EventThread = NULL;	/* Thread handle */
 static Uint32 event_thread;			/* The event thread id */
 
 void SDL_Lock_EventThread(void)
@@ -187,16 +186,16 @@ static int SDL_StartEventThread(Uint32 flags)
 
 static void SDL_StopEventThread(void)
 {
-	
 	SDL_EventQ.active = 0;
-	
 	if ( SDL_EventThread ) {
 		SDL_WaitThread(SDL_EventThread, NULL);
 		SDL_EventThread = NULL;
 		SDL_DestroyMutex(SDL_EventLock.lock);
+		SDL_EventLock.lock = NULL;
 	}
 #ifndef IPOD
 	SDL_DestroyMutex(SDL_EventQ.lock);
+	SDL_EventQ.lock = NULL;
 #endif
 }
 
@@ -217,7 +216,7 @@ void SDL_StopEventLoop(void)
 	SDL_KeyboardQuit();
 	SDL_MouseQuit();
 	SDL_QuitQuit();
- 
+
 	/* Clean out EventQ */
 	SDL_EventQ.head = 0;
 	SDL_EventQ.tail = 0;
@@ -321,7 +320,7 @@ int SDL_PeepEvents(SDL_Event *events, int numevents, SDL_eventaction action,
 								Uint32 mask)
 {
 	int i, used;
- 
+
 	/* Don't look after we've quit */
 	if ( ! SDL_EventQ.active ) {
 		return(-1);

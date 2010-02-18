@@ -202,17 +202,18 @@ int CGX_SetupImage(_THIS, SDL_Surface *screen)
 {
 	SDL_Ximage=NULL;
     ULONG pitch;
-	unsigned int format = BMF_MINPLANES;
+	unsigned int format = BMF_MINPLANES | BMF_DISPLAYABLE;
 	unsigned int friendbmap = SDL_RastPort->BitMap;
-	if(screen->flags&SDL_HWSURFACE) {
+	if(screen->flags&SDL_HWSURFACE) 
+	{
 		if (this->hidden->swap_bytes && this->hidden->depth == 16)
 		{ kprintf ("Slow 16 bit pixel swap need better use a rgb16 screenmode \n");
-		format = BMF_MINPLANES| BMF_SPECIALFMT|(PIXFMT_RGB16<< 24);
+		format = BMF_DISPLAYABLE | BMF_MINPLANES| BMF_SPECIALFMT|(PIXFMT_RGB16<< 24);
 		friendbmap = 0;
 		}	
 	if (this->hidden->swap_bytes && this->hidden->depth == 32)
-		{ kprintf ("Slow 32 bit pixel swap need better use a argb Screenmode \n");
-		format = BMF_MINPLANES| BMF_SPECIALFMT|(PIXFMT_BGRA32<< 24);
+		{ kprintf ("Slow 32 bit pixel swap need better use a BGRA Screenmode \n");
+		format = BMF_DISPLAYABLE | BMF_MINPLANES| BMF_SPECIALFMT|(PIXFMT_BGRA32<< 24);
 		friendbmap = 0;
 		}
         
@@ -223,16 +224,17 @@ int CGX_SetupImage(_THIS, SDL_Surface *screen)
 			D(bug("Creating system accel struct\n"));
 		}
 		screen->hwdata->lock=NULL;
+		screen->hwdata->bmap=0;
 		screen->hwdata->allocated=0;
 		screen->hwdata->mask=NULL;
-		
+		screen->hwdata->videodata=this;
+	//if ((!screen->flags&SDL_FULLSCREEN))
+	{    
 		if (AvailMem(MEMF_LARGEST) < (screen->w * screen->h * (this->hidden->depth /8) + 500000))
 		{return -1;
 		}
 		if (!(this->hidden->bmap=AllocBitMap(screen->w,screen->h,this->hidden->depth,format,friendbmap)))return -1;
         screen->hwdata->bmap = this->hidden->bmap;
-		screen->hwdata->videodata=this;
-
 		if(!(screen->hwdata->lock=LockBitMapTags(screen->hwdata->bmap,
 				LBMI_BASEADDRESS,(ULONG)&screen->pixels,
 				LBMI_BYTESPERROW,(ULONG)&pitch,TAG_DONE))) {
@@ -244,9 +246,27 @@ int CGX_SetupImage(_THIS, SDL_Surface *screen)
 			UnLockBitMap(screen->hwdata->lock);
 			screen->hwdata->lock=NULL;
 		}
-        
-		screen->pitch=pitch;
-        this->UpdateRects = CGX_NormalUpdate;
+     screen->pitch=pitch;
+     this->UpdateRects = CGX_NormalUpdate;
+	 return 0;
+	}	
+		
+    if(!(screen->hwdata->lock=LockBitMapTags(SDL_RastPort->BitMap,
+				LBMI_BASEADDRESS,(ULONG)&screen->pixels,
+				LBMI_BYTESPERROW,(ULONG)&pitch,TAG_DONE))) {
+			free(screen->hwdata);
+			screen->hwdata=NULL;
+			screen->hwdata->lock=NULL;
+			return -1;
+		}
+		else {
+			UnLockBitMap(screen->hwdata->lock);
+			screen->hwdata->lock=NULL;
+		}
+		
+     this->UpdateRects = CGX_FlipHWSurface; 
+		 screen->pitch=pitch;
+		
         kprintf("HWSURFACE create\n");
 		D(bug("Accel video image configured (%lx, pitch %ld).\n",screen->pixels,screen->pitch));
 		return 0;
@@ -387,12 +407,20 @@ int CGX_LockHWSurface(_THIS, SDL_Surface *surface)
 		if(!surface->hwdata->lock)
 		{	
 			Uint32 pitch;
-
+           if (surface->hwdata->bmap)
+		   {
 			if(!(surface->hwdata->lock=LockBitMapTags(surface->hwdata->bmap,
 					LBMI_BASEADDRESS,(ULONG)&surface->pixels,
 					LBMI_BYTESPERROW,(ULONG)&pitch,TAG_DONE)))
 				return -1;
-      
+		   }
+		   else
+		   {
+              if(!(surface->hwdata->lock=LockBitMapTags(SDL_RastPort->BitMap,
+					LBMI_BASEADDRESS,(ULONG)&surface->pixels,
+					LBMI_BYTESPERROW,(ULONG)&pitch,TAG_DONE)))
+				return -1;
+		   }
 // surface->pitch e' a 16bit!
 
 			surface->pitch=pitch;
@@ -417,7 +445,7 @@ void CGX_UnlockHWSurface(_THIS, SDL_Surface *surface)
 		UnLockBitMap(surface->hwdata->lock);
 		surface->hwdata->lock=NULL;
 		//kprintf("%lx\n",surface->pixels);
-		surface->pixels=0xdeadbeef;
+		//surface->pixels=0xdeadbeef;
 	}
 }
 
@@ -434,7 +462,7 @@ int CGX_FlipHWSurface(_THIS, SDL_Surface *surface)
     //kprintf("before change\n"); 
 	//surface->hwdata->bmap=SDL_RastPort->BitMap=this->hidden->SB[current]->sb_BitMap;
 	
-	if(this->hidden->dbuffer)
+	if(this->hidden->dbuffer) // currently deactivate
 	{
 	//SDL_UpdateRect(surface, 0, 0, 0, 0);
 	//surface->hwdata->bmap=SDL_RastPort->BitMap=this->hidden->SB[current]->sb_BitMap;
@@ -607,7 +635,7 @@ static void CGX_NormalUpdate(_THIS, int numrects, SDL_Rect *rects)
 					if ( ! rects[i].w ) { /* Clipped? */
 					continue;
 					}
-					BltBitMapRastPort(this->hidden->bmap,rects[i].x, rects[i].y,
+					if (this->hidden->bmap)BltBitMapRastPort(this->hidden->bmap,rects[i].x, rects[i].y,
 					SDL_Window->RPort,rects[i].x,rects[i].y,
 					rects[i].w,rects[i].h,0xc0);
 			}
@@ -968,7 +996,7 @@ void CGX_RefreshDisplay(_THIS)
 					LBMI_BYTESPERROW,(ULONG)&destpitch,TAG_DONE);
 		 return;
 		}
-					BltBitMapRastPort(this->hidden->bmap,0,0,
+					if (this->hidden->bmap)BltBitMapRastPort(this->hidden->bmap,0,0,
 					SDL_Window->RPort,0,0,
 					this->screen->w,this->screen->h,0xc0);
 		
