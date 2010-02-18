@@ -26,6 +26,7 @@
 #include "SDL_platform.h"
 #include <exec/types.h>
 
+ 
 /* This is a set of defines to configure the SDL features */
 
 typedef signed char         int8_t;
@@ -143,5 +144,15 @@ typedef unsigned long long  uint64_t;
 
 /* Enable assembly routines where available */
 #define SDL_ASSEMBLY_ROUTINES	1
-
+#define SDL_AMIGA_NOWINDOW 0x10000
+#ifdef __cplusplus
+extern "C" {
+#endif
+void SDL_AmigaLockWindow(void);
+void SDL_AmigaUnlockWindow(void);
+struct Window * SDL_AmigaWindowAddr(void);
+#ifdef __cplusplus
+}
+#endif
 #endif /* _SDL_config_amigaos_h */
+
