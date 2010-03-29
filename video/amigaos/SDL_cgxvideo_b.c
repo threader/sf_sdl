@@ -43,8 +43,7 @@ static char rcsid =
 */
 //#define FAKEDB
 #include "SDL_config.h" 
-#include <intuition/screens.h>
-#include <cybergraphics/cybergraphics.h>
+
 //#include "SDL.h"
 //#include "SDL_error.h"
 //#include "SDL_timer.h"
@@ -68,12 +67,10 @@ static char rcsid =
 #include <stdlib.h>
 #include <proto/alib.h>
 #endif
-#ifdef __cplusplus
-extern "C" {
-#endif
+
 //#define Bug kprintf
 
-unsigned long _sdl_windowaddr;
+
 
 /* Initialization/Query functions */
 static int CGX_VideoInit(_THIS, SDL_PixelFormat *vformat);
@@ -82,27 +79,12 @@ static int CGX_ToggleFullScreen(_THIS, int on);
 static void CGX_UpdateMouse(_THIS);
 static int CGX_SetColors(_THIS, int firstcolor, int ncolors, SDL_Color *colors);
 static void CGX_VideoQuit(_THIS);
-static struct SignalSemaphore sem;
+
 /* CGX driver bootstrap functions */
 
 struct Library *CyberGfxBase=NULL;
 struct IntuitionBase *IntuitionBase=NULL;
 struct GfxBase *GfxBase=NULL;
-
-void SDL_AmigaLockWindow()
-{
-ObtainSemaphore (&sem);
-}
-
-void SDL_AmigaUnlockWindow()
-{
-ReleaseSemaphore (&sem);
-}
-
-struct Window * SDL_AmigaWindowAddr(void)
-{
-  return _sdl_windowaddr;
-}
 
 int CGX_SetGamma(_THIS, float red, float green, float blue)
 {
@@ -227,7 +209,7 @@ static void CGX_DeleteDevice(SDL_VideoDevice *device)
 static SDL_VideoDevice *CGX_CreateDevice(int devindex)
 {
 	SDL_VideoDevice *device;
-    InitSemaphore(&sem);
+
 	/* Initialize all variables that we clean on shutdown */
 	device = (SDL_VideoDevice *)malloc(sizeof(SDL_VideoDevice));
 	if ( device ) {
@@ -265,7 +247,7 @@ static SDL_VideoDevice *CGX_CreateDevice(int devindex)
 	device->AllocHWSurface = CGX_AllocHWSurface;
 	device->CheckHWBlit = CGX_CheckHWBlit;
 	device->FillHWRect = CGX_FillHWRect;
-	device->SetHWColorKey = NULL;//CGX_SetHWColorKey;
+	device->SetHWColorKey = CGX_SetHWColorKey;
 	device->SetHWAlpha = NULL;
 	device->LockHWSurface = CGX_LockHWSurface;
 	device->UnlockHWSurface = CGX_UnlockHWSurface;
@@ -304,7 +286,7 @@ VideoBootStrap CGX_bootstrap = {
 	"CGX", "AmigaOS CyberGraphics", CGX_Available, CGX_CreateDevice
 };
 
-Uint32 MakeBitMask(_THIS,int type,int format,int *bpp, struct SDL_Surface *screen)
+Uint32 MakeBitMask(_THIS,int type,int format,int *bpp)
 {
 	D(if(type==0)bug("REAL pixel format: "));
    
@@ -341,14 +323,12 @@ Uint32 MakeBitMask(_THIS,int type,int format,int *bpp, struct SDL_Surface *scree
 					return 31;
 			}
 		case PIXFMT_BGR16PC:
-			return 0;
-			break;
 		case PIXFMT_RGB16:
 
 			switch(type)
 			{
 				case 0:
-					
+					//kprintf("RGB16PC\n");
 					return 63488;
 				case 1:
 					return 2016;
@@ -362,22 +342,20 @@ Uint32 MakeBitMask(_THIS,int type,int format,int *bpp, struct SDL_Surface *scree
 				case 0:  
 					//kprintf("RGB16PC/BGR16\n");
 					return 0;
-					//return 0b11111000; //248
-					return 248; // old
-				
+					//return 0b11111000;
+					return 248;
+					
 					//return 0x7C00;
 				case 1:
 					return 0;
 					//return 0b110000000000111;
-					//return 24583;
-					return 57351;  // old
-				
-					   
+					return 57351; 
+										//
+					  
 				case 2:
 					return 0;
-					//return 0b1111100000000; //7936
-					return 7936; // old
-				
+					//return 0b1111100000000;
+					return 7936;
 			}
 
 		case PIXFMT_RGB24:
@@ -415,11 +393,11 @@ Uint32 MakeBitMask(_THIS,int type,int format,int *bpp, struct SDL_Surface *scree
 					return 0xff;
 			}
 		case PIXFMT_BGRA32:
-		   
+		    
 			switch(type)
 			{
 #if SDL_BYTEORDER == SDL_LIL_ENDIAN
-               case 0:
+                case 0:
 					D(bug("BGRA32\n"));
 					return 0xff;
 				case 1:
@@ -427,24 +405,14 @@ Uint32 MakeBitMask(_THIS,int type,int format,int *bpp, struct SDL_Surface *scree
 				case 2:
 					return 0xff0000;
 #else
- 
                 case 0:
 					D(bug("BGRA32\n"));
-					if (screen && (screen->flags & SDL_HWSURFACE)){return 0x00ff00;}	
-                    return 0xff000000;		
-					
+					return 0xff000000;
 				case 1:
-					if (screen && (screen->flags & SDL_HWSURFACE)){return 0xff0000;} //green
-					return 0x00ff0000; 
+					return 0x00ff0000;
 				case 2:
-					if (screen && (screen->flags & SDL_HWSURFACE))return 0xff000000;	//blue
-					return 0x0000ff00;
-					
-					
-
-
-
-
+					return 0x0000ff00;			
+				
 
 #endif
             }
@@ -568,64 +536,31 @@ static int CGX_VideoInit(_THIS, SDL_PixelFormat *vformat)
 	}
 
 	D(bug("Checking if we are using a CGX native display...\n"));
-   
+
 	if(!IsCyberModeID(GetVPModeID(&SDL_Display->ViewPort)))
-	{  //selden reach
-		
-		Uint32 okid = INVALID_ID;
-		if (bpp == 32)
-		{
-			UWORD pixfmt[] ={PIXFMT_BGRA32,-1};
-		  unsigned long *ret;
-          struct CyberModeNode * cnode;
-		  ret = AllocCModeListTags(CYBRMREQ_MinWidth,SDL_Display->Width,CYBRMREQ_MinHeight,SDL_Display->Height,
-			  CYBRMREQ_MaxWidth,SDL_Display->Width+1000,CYBRMREQ_MaxHeight,SDL_Display->Height+1000,
-			  CYBRMREQ_MaxDepth,bpp,CYBRMREQ_MinDepth,bpp,CYBRMREQ_CModelArray,&pixfmt);
-			  if (ret)
-			  {cnode = *ret;
-               if(cnode)okid = cnode->DisplayID;
-			  }
-		}
-		if (bpp == 16)
-		{
-			UWORD pixfmt[] ={PIXFMT_RGB16,-1};
-		  unsigned long *ret;
-          struct CyberModeNode * cnode;
-		  ret = AllocCModeListTags(CYBRMREQ_MinWidth,SDL_Display->Width,CYBRMREQ_MinHeight,SDL_Display->Height,
-			  CYBRMREQ_MaxWidth,SDL_Display->Width+1000,CYBRMREQ_MaxHeight,SDL_Display->Height+1000,
-			  CYBRMREQ_MaxDepth,bpp,CYBRMREQ_MinDepth,16,CYBRMREQ_CModelArray,&pixfmt);
-			  if (ret)
-					{cnode = *ret;
-					if (cnode)okid = cnode->DisplayID;
-					}
-		}
-		kprintf("%screenmode ID%ld\n",okid);
-		if (okid == INVALID_ID)
-		{
-		okid=BestCModeIDTags(CYBRBIDTG_NominalWidth,SDL_Display->Width,
+	{
+		Uint32 okid=BestCModeIDTags(CYBRBIDTG_NominalWidth,SDL_Display->Width,
 				CYBRBIDTG_NominalHeight,SDL_Display->Height,
 				CYBRBIDTG_Depth,bpp,
 				TAG_DONE);
-		}
-        
+		
+        D(bug("Default visual is not CGX native!\n"));
 
 		UnlockPubScreen(NULL,SDL_Display);
 
 		GFX_Display=NULL;
-        
+
 		if(okid!=INVALID_ID)
-		{  //selden reach
+		{
 			
 			GFX_Display=OpenScreenTags(NULL,
 									//SA_Width,SDL_Display->Width,
 									//SA_Height,SDL_Display->Height,
-									SA_Title,"SDL Screen",
 									SA_Depth,bpp,SA_Quiet,TRUE,
 									SA_ShowTitle,FALSE,
 									SA_DisplayID,okid,
 									TAG_DONE);
 		}
-		else kprintf("Cant get a valid screenmode ID with BestCModeIDTags\n");
 
 		if(!GFX_Display)
 		{
@@ -697,9 +632,9 @@ static int CGX_VideoInit(_THIS, SDL_PixelFormat *vformat)
 
 		if ( vformat->BitsPerPixel > 8 )
 		{
-			vformat->Rmask = MakeBitMask(this,0,form,&this->hidden->depth,0);
-	  		vformat->Gmask = MakeBitMask(this,1,form,&this->hidden->depth,0);
-		  	vformat->Bmask = MakeBitMask(this,2,form,&this->hidden->depth,0);
+			vformat->Rmask = MakeBitMask(this,0,form,&this->hidden->depth);
+	  		vformat->Gmask = MakeBitMask(this,1,form,&this->hidden->depth);
+		  	vformat->Bmask = MakeBitMask(this,2,form,&this->hidden->depth);
 		  
 		}
 	}
@@ -713,9 +648,8 @@ static int CGX_VideoInit(_THIS, SDL_PixelFormat *vformat)
 
 	/* Fill in some window manager capabilities */
 	this->info.wm_available = 1;
-	this->info.hw_available = 1;
 	this->info.blit_hw = 1;
-	this->info.blit_hw_CC = 0;
+	this->info.blit_hw_CC = 1;
 	this->info.blit_sw = 1;
 	this->info.blit_fill = 1;
 	this->info.video_mem=8000; // Not always true but almost any Amiga card has this memory!
@@ -731,7 +665,7 @@ static int CGX_VideoInit(_THIS, SDL_PixelFormat *vformat)
 void CGX_DestroyWindow(_THIS, SDL_Surface *screen)
 {
 	D(bug("Destroy Window...\n"));
-   
+
 	if ( ! SDL_windowid ) {
 		/* Hide the managed window */
 		int was_fullscreen=0;
@@ -748,16 +682,10 @@ void CGX_DestroyWindow(_THIS, SDL_Surface *screen)
 		}
 
 		/* Destroy the output window */
-		SDL_AmigaLockWindow();
 		if ( SDL_Window ) {
 			CloseWindow(SDL_Window);
-			if (SDL_Window_Background)CloseWindow(SDL_Window_Background);
 			SDL_Window=NULL;
-			_sdl_windowaddr = 0;
-            SDL_Window_Background=NULL;
-			
 		}
-		SDL_AmigaUnlockWindow();
 
 		/* Free the colormap entries */
 		if ( SDL_XPixels ) {
@@ -795,19 +723,16 @@ static void CGX_SetSizeHints(_THIS, int w, int h, Uint32 flags)
 	}
 	if ( flags & SDL_FULLSCREEN ) {
 		flags&=~SDL_RESIZABLE;
-	}
-	//else
-    
-	//if ( getenv("SDL_VIDEO_CENTERED") ) {
-	//	int display_w, display_h;
+	} else if ( getenv("SDL_VIDEO_CENTERED") ) {
+		int display_w, display_h;
 
-	//	display_w = SDL_Display->Width;
-	//	display_h = SDL_Display->Height;
-	//	ChangeWindowBox(SDL_Window,(display_w - w /* -SDL_Window->BorderLeft-SDL_Window->BorderRight */)/2,
-	//				(display_h - h /* -SDL_Window->BorderTop-SDL_Window->BorderBottom*/)/2,
-	//				w/*+SDL_Window->BorderLeft+SDL_Window->BorderRight */,
-	//				h/*+SDL_Window->BorderTop+SDL_Window->BorderBottom */);
-	//}
+		display_w = SDL_Display->Width;
+		display_h = SDL_Display->Height;
+		ChangeWindowBox(SDL_Window,(display_w - w - SDL_Window->BorderLeft-SDL_Window->BorderRight)/2,
+					(display_h - h - SDL_Window->BorderTop-SDL_Window->BorderBottom)/2,
+					w+SDL_Window->BorderLeft+SDL_Window->BorderRight,
+					h+SDL_Window->BorderTop+SDL_Window->BorderBottom);
+	}
 }
 
 int CGX_CreateWindow(_THIS, SDL_Surface *screen,
@@ -859,18 +784,15 @@ int CGX_CreateWindow(_THIS, SDL_Surface *screen,
 				
 			}
 		}
-		if(flags&SDL_HWSURFACE)screen->flags|=SDL_HWSURFACE;
-		  
  
 		D(bug("BEFORE screen allocation: bpp:%ld (real:%ld)\n",bpp,this->hidden->depth));
 
 /* With this call if needed I'll revert the wanted bpp to a bpp best suited for the display, actually occurs
    only with requested format 15/16bit and display format != 15/16bit
  */
-		
         
 		if ( ! SDL_ReallocFormat(screen, bpp,
-				MakeBitMask(this,0,form,&bpp,screen), MakeBitMask(this,1,form,&bpp,screen), MakeBitMask(this,2,form,&bpp,screen), 0) )
+				MakeBitMask(this,0,form,&bpp), MakeBitMask(this,1,form,&bpp), MakeBitMask(this,2,form,&bpp), 0) )
 			return -1;
         
 		D(bug("AFTER screen allocation: bpp:%ld (real:%ld)\n",bpp,this->hidden->depth));
@@ -918,79 +840,49 @@ int CGX_CreateWindow(_THIS, SDL_Surface *screen,
 	/* Create (or use) the X11 display window */
 
 	if ( !SDL_windowid ) {
-		int left = (SDL_Display->Width - w) / 2;
-		int top = (SDL_Display->Height - h) / 2;
-		if (left < 0 )left = 0;
-		if (top  < 0 )top =0;
-				
 			if( flags & SDL_FULLSCREEN )
-			{ 
-				
-				//SetAPen(&sc->RastPort,1); // rest of display should be black
-				//RectFill(&sc->RastPort,0,0,w-1,h-1); 
-				if (left !=0 || top != 0)
-				{
-				SDL_Window_Background = OpenWindowTags(NULL,WA_Left,0,WA_Top,0, 
-											WA_Flags,WFLG_SIMPLE_REFRESH | WFLG_ACTIVATE|WFLG_RMBTRAP|WFLG_BORDERLESS|WFLG_BACKDROP
-											/*|WFLG_REPORTMOUSE */,
-											WA_IDCMP,0,
-											//WA_Title,"SDL Backgroundwindow",
+			{
+				int left = (SDL_Display->Width - w) / 2;
+				int top = (SDL_Display->Height - h) / 2;
+				if (left < 0 )left = 0;
+				if (top  < 0 )top =0;
+				SDL_Window = OpenWindowTags(NULL,WA_Left,60,WA_Top,40, WA_Width, w,WA_Height,h,
+											WA_Flags,WFLG_ACTIVATE|WFLG_RMBTRAP|WFLG_BORDERLESS|WFLG_BACKDROP|WFLG_REPORTMOUSE,
+											WA_IDCMP,IDCMP_RAWKEY|IDCMP_MOUSEBUTTONS|IDCMP_MOUSEMOVE,
 											WA_CustomScreen,(ULONG)SDL_Display,
 											TAG_DONE);
-				}
-				if (SDL_Window_Background)
-				{
-				SetAPen(SDL_Window_Background->RPort,1); // rest of display should be black
-				RectFill(SDL_Window_Background->RPort,0,0,SDL_Window_Background->Width-1,SDL_Window_Background->Height); 
-				}
-				SDL_Window = OpenWindowTags(NULL,WA_Left,left,WA_Top,top,WA_Width,w,WA_Height,h, 
-											WA_Flags,WFLG_ACTIVATE|WFLG_RMBTRAP|WFLG_BORDERLESS | WFLG_REPORTMOUSE ,
-											WA_IDCMP,IDCMP_RAWKEY|IDCMP_MOUSEBUTTONS|IDCMP_MOUSEMOVE |IDCMP_ACTIVEWINDOW|IDCMP_INACTIVEWINDOW,
-											WA_CustomScreen,(ULONG)SDL_Display,
-											TAG_DONE);
-                if (SDL_Window)
-				{
-				 
-                 
-				  //ChangeWindowBox(SDL_Window,left,top,w,h);
-				}
+
 				D(bug("Opening backdrop window %ldx%ld on display %lx!\n",w,h,SDL_Display));
 			}
 			else
 			{
 				/* Create GimmeZeroZero window when OpenGL is used */
-				unsigned long gzz = TRUE;
-				/*if( flags & SDL_OPENGL ) {
+				unsigned long gzz = FALSE;
+				if( flags & SDL_OPENGL ) {
 					gzz = TRUE;
-				}*/
-               
-				SDL_Window = OpenWindowTags(NULL,WA_Left,left,WA_Top,top,WA_InnerWidth,w,WA_InnerHeight,h,
+				}
+
+				SDL_Window = OpenWindowTags(NULL,WA_InnerWidth,w,WA_InnerHeight,h,
 											WA_Flags,WFLG_REPORTMOUSE|WFLG_ACTIVATE|WFLG_RMBTRAP | ((flags&SDL_NOFRAME) ? 0 : (WFLG_DEPTHGADGET|WFLG_CLOSEGADGET|WFLG_DRAGBAR | ((flags&SDL_RESIZABLE) ? WFLG_SIZEGADGET|WFLG_SIZEBBOTTOM : 0))),
-											WA_IDCMP,IDCMP_RAWKEY|IDCMP_CLOSEWINDOW|IDCMP_MOUSEBUTTONS|IDCMP_NEWSIZE|IDCMP_MOUSEMOVE |IDCMP_ACTIVEWINDOW |IDCMP_INACTIVEWINDOW,
+											WA_IDCMP,IDCMP_RAWKEY|IDCMP_CLOSEWINDOW|IDCMP_MOUSEBUTTONS|IDCMP_NEWSIZE|IDCMP_MOUSEMOVE,
 											WA_PubScreen,(ULONG)SDL_Display,
 											WA_GimmeZeroZero, gzz,
 														TAG_DONE);
-				
 				D(bug("Opening WB window of size: %ldx%ld!\n",w,h));
 			}
 			
- 
+
 		if(!SDL_Window)
 			return -1;
 	}
 	this->hidden->swap_bytes = 0; 
     if ((flags & SDL_OPENGL) == 0)
-			{ 
+			{
 				switch(GetCyberMapAttr(SDL_Window->RPort->BitMap, CYBRMATTR_PIXFMT))
 				{
-					//case PIXFMT_RGB15PC:
+					case PIXFMT_RGB15PC:
 					case PIXFMT_RGB16PC:
-					case PIXFMT_BGR16PC:
 						this->hidden->swap_bytes = 1; 
-						break;
-                    case PIXFMT_BGRA32:
-                        
-						//this->hidden->swap_bytes = 1; 
 						break;
 				}
 			} 
@@ -1012,7 +904,7 @@ int CGX_CreateWindow(_THIS, SDL_Surface *screen,
 	}
 	else SDL_RastPort=SDL_Window->RPort;
 
-	
+	if(flags&SDL_HWSURFACE)screen->flags|=SDL_HWSURFACE;
     
 	if( !SDL_windowid ) {
 	    CGX_SetSizeHints(this, w, h, flags);
@@ -1034,7 +926,7 @@ int CGX_CreateWindow(_THIS, SDL_Surface *screen,
 	screen->w = w;
 	screen->h = h;
 	screen->pitch = SDL_CalculatePitch(screen);
-	if (CGX_ResizeImage(this, screen, flags) <0 )return -1;
+	CGX_ResizeImage(this, screen, flags);
 
 	/* Make OpenGL Context if needed*/
 	if(flags & SDL_OPENGL) {
@@ -1052,8 +944,7 @@ int CGX_CreateWindow(_THIS, SDL_Surface *screen,
 				screen->flags |= SDL_OPENGL;
 		}
 	}
-	_sdl_windowaddr = SDL_Window;
-	kprintf("bit %ld byte / Pixel %ld render buffer addr %lx \n",screen->format->BitsPerPixel,this->hidden->BytesPerPixel,screen->pixels);
+	kprintf("%ld %ld\n",screen->format->BitsPerPixel,this->hidden->BytesPerPixel);
 	return 0;
 }
 
@@ -1061,22 +952,22 @@ int CGX_ResizeWindow(_THIS,
 			SDL_Surface *screen, int w, int h, Uint32 flags)
 {
 	D(bug("CGX_ResizeWindow\n"));
- int retval = -1;
+
 	if ( ! SDL_windowid ) {
 		/* Resize the window manager window */
 		CGX_SetSizeHints(this, w, h, flags);
 		current_w = w;
 		current_h = h;
 
-		ChangeWindowBox(SDL_Window,SDL_Window->LeftEdge ,SDL_Window->TopEdge, w+SDL_Window->BorderLeft+SDL_Window->BorderRight,
+		ChangeWindowBox(SDL_Window,SDL_Window->LeftEdge,SDL_Window->TopEdge, w+SDL_Window->BorderLeft+SDL_Window->BorderRight,
 					h+SDL_Window->BorderTop+SDL_Window->BorderBottom);
 
 		screen->w = w;
 		screen->h = h;
 		screen->pitch = SDL_CalculatePitch(screen);
-		 retval = CGX_ResizeImage(this, screen, flags);
+		CGX_ResizeImage(this, screen, flags);
 	}
-	return(retval);
+	return(0);
 }
 
 static SDL_Surface *CGX_SetVideoMode(_THIS, SDL_Surface *current,
@@ -1084,12 +975,12 @@ static SDL_Surface *CGX_SetVideoMode(_THIS, SDL_Surface *current,
 {
 	Uint32 saved_flags;
 	int needcreate=0;
-	//flags &= ~SDL_DOUBLEBUF;
+	if (getenv("SDL_HWSURFACE"))flags |= SDL_HWSURFACE ;
+	else {flags &= ~SDL_HWSURFACE ;flags &= ~SDL_DOUBLEBUF;}
 	D(bug("CGX_SetVideoMode current:%lx\n",current));
-    
+
 	/* Lock the event thread, in multi-threading environments */
 	SDL_Lock_EventThread();
-	SDL_AmigaLockWindow();
 
 // Check if the window needs to be closed or can be resized
 
@@ -1097,6 +988,7 @@ static SDL_Surface *CGX_SetVideoMode(_THIS, SDL_Surface *current,
 		needcreate=1;
 
 // Check if we need to close an already existing videomode...
+    kprintf("Set Video mode depth %ld\n",bpp);
 	if(current && current->flags&SDL_FULLSCREEN && !(flags&SDL_FULLSCREEN)) {
 		unsigned long i;
 		D(bug("Destroying image, window & screen!\n"));
@@ -1107,7 +999,7 @@ static SDL_Surface *CGX_SetVideoMode(_THIS, SDL_Surface *current,
 		GFX_Display=SDL_Display=LockPubScreen(NULL);
 
 		bpp=this->hidden->depth=GetCyberMapAttr(SDL_Display->RastPort.BitMap,CYBRMATTR_DEPTH);
-        //kprintf("Set Video mode depth %ld\n",bpp);
+        kprintf("Set Video mode depth %ld\n",bpp);
 		for ( i = 0; i < this->hidden->nvisuals; i++ ) {
 			if ( this->hidden->visuals[i].depth == bpp ) /* era .depth */
 				break;
@@ -1144,49 +1036,11 @@ static SDL_Surface *CGX_SetVideoMode(_THIS, SDL_Surface *current,
 		else
 buildnewscreen:
 		{
-			Uint32 okid=INVALID_ID;
-		/*if ((flags & SDL_OPENGL) && (bpp == 24))
-		{
-			bpp = 32;
-		}*/
-			if (bpp == 32)
-		{
-			UWORD pixfmt[] ={PIXFMT_BGRA32,-1};
-		  unsigned long *ret;
-          struct CyberModeNode * cnode;
-		  ret = AllocCModeListTags(CYBRMREQ_MinWidth,width,CYBRMREQ_MinHeight,height,
-			  CYBRMREQ_MaxWidth,width+1000,CYBRMREQ_MaxHeight,height+1000,
-			  CYBRMREQ_MaxDepth,bpp,CYBRMREQ_MinDepth,32,CYBRMREQ_CModelArray,&pixfmt,TAG_END);
-			  if (ret)
-					{cnode = *ret;
-					if (cnode)okid = cnode->DisplayID;
-					}
-		}
-		//if (bpp == 16)
-//		{
-//			UWORD pixfmt[] ={PIXFMT_RGB16,-1};
-//		  unsigned long *ret;
-//          struct CyberModeNode * cnode;
-//		  ret = AllocCModeListTags(CYBRMREQ_MinWidth,width,CYBRMREQ_MinHeight,height,
-//			  CYBRMREQ_MaxWidth,width+1000,CYBRMREQ_MaxHeight,height+1000,
-//			  CYBRMREQ_MaxDepth,bpp,CYBRMREQ_MinDepth,16,CYBRMREQ_CModelArray,&pixfmt,TAG_END);
-//			  if (ret)
-//					{cnode = *ret;
-//					if (cnode)okid = cnode->DisplayID;
-//					}
-//		if (!IsCyberModeID(okid))okid = INVALID_ID;
-//		kprintf(" RGB16  Mode ID %lx\n",okid);
-//		}
-		
-		
-		if (okid == INVALID_ID)
-		{
-				okid=BestCModeIDTags(CYBRBIDTG_NominalWidth,width,
+            Uint32 okid=BestCModeIDTags(CYBRBIDTG_NominalWidth,width,
 				CYBRBIDTG_NominalHeight,height,
 				CYBRBIDTG_Depth,bpp,
 				TAG_DONE);
-		kprintf("Mode ID %lx\n",okid);		
-		}  
+           
 
 
             GFX_Display=NULL;
@@ -1204,20 +1058,17 @@ buildnewscreen:
 						  sheight=dinfo.Nominal.MaxY;
 						}
 				GFX_Display=OpenScreenTags(NULL,
-								//SA_Width,width,
-								//SA_Height,height,
-								SA_Title,"SDL Screen",
+								SA_Width,width,
+								SA_Height,height,
 								SA_Quiet,TRUE,SA_ShowTitle,FALSE,
 								SA_Depth,bpp,
 								SA_DisplayID,okid,
 								TAG_DONE);
 			}
-			else kprintf("2: Cant get a valid screenmode ID with BestCModeIDTags\n");
 			if(!GFX_Display) {
 				GFX_Display=SDL_Display;
 				flags &= ~SDL_FULLSCREEN;
 				flags &= ~SDL_DOUBLEBUF;
-				kprintf("Screen cant open \n");
 			}
 			else {
 				UnlockPubScreen(NULL,SDL_Display);
@@ -1314,7 +1165,7 @@ buildnewscreen:
 			goto done;
 		}
 	}
- 
+
 #if 0
 	/* Set up the new mode framebuffer */
 	if ( ((current->w != width) || (current->h != height)) ||
@@ -1329,10 +1180,8 @@ buildnewscreen:
 	current->flags |= (flags&SDL_RESIZABLE); // Resizable only if the user asked it
 
   done:
-	Delay(1);
 	/* Release the event thread */
 	SDL_Unlock_EventThread();
-	SDL_AmigaUnlockWindow();
 
 	/* We're done! */
 	return(current);
@@ -1375,7 +1224,6 @@ static int CGX_ToggleFullScreen(_THIS, int on)
 
 static void SetSingleColor(Uint32 fmt, unsigned char r, unsigned char g, unsigned char b, unsigned char *c)
 {
-	
 	switch(fmt)
 	{
 		case PIXFMT_BGR15:
@@ -1391,10 +1239,10 @@ static void SetSingleColor(Uint32 fmt, unsigned char r, unsigned char g, unsigne
 				Uint16 *t=(Uint16 *)c;
 				*t=(b>>3) | ((g>>3)<<5) | ((r>>3)<<10) ;
 			}
-			break; 
+			break;
 		case PIXFMT_BGR16PC:
 		case PIXFMT_RGB16:
-			{ 
+			{
 				Uint16 *t=(Uint16 *)c;
 				*t=(b>>3) | ((g>>2)<<5) | ((r>>3)<<11) ;
 			}
@@ -1425,7 +1273,6 @@ static void SetSingleColor(Uint32 fmt, unsigned char r, unsigned char g, unsigne
 			c[3]=b;
 			break;
 		case PIXFMT_BGRA32:
-        
 			c[0]=b;
 			c[1]=g;
 			c[2]=r;
@@ -1456,13 +1303,13 @@ static void CGX_UpdateMouse(_THIS)
 	}
 	else
 	{
-		if(	SDL_Display->MouseX>=(SDL_Window->LeftEdge/*+SDL_Window->BorderLeft*/) && SDL_Display->MouseX<(SDL_Window->LeftEdge+ SDL_Window->Width/*-SDL_Window->BorderRight*/) &&
-			SDL_Display->MouseY>=(SDL_Window->TopEdge/*+SDL_Window->BorderLeft*/) && SDL_Display->MouseY<(SDL_Window->TopEdge+SDL_Window->Height/*-SDL_Window->BorderBottom*/)
+		if(	SDL_Display->MouseX>=(SDL_Window->LeftEdge+SDL_Window->BorderLeft) && SDL_Display->MouseX<(SDL_Window->LeftEdge+SDL_Window->Width-SDL_Window->BorderRight) &&
+			SDL_Display->MouseY>=(SDL_Window->TopEdge+SDL_Window->BorderLeft) && SDL_Display->MouseY<(SDL_Window->TopEdge+SDL_Window->Height-SDL_Window->BorderBottom)
 			)
 		{
 			SDL_PrivateAppActive(1, SDL_APPMOUSEFOCUS);
-			SDL_PrivateMouseMotion(0, 0, SDL_Display->MouseX-SDL_Window->LeftEdge/*-SDL_Window->BorderLeft*/,
-										SDL_Display->MouseY-SDL_Window->TopEdge/*-SDL_Window->BorderTop*/);
+			SDL_PrivateMouseMotion(0, 0, SDL_Display->MouseX-SDL_Window->LeftEdge-SDL_Window->BorderLeft,
+										SDL_Display->MouseY-SDL_Window->TopEdge-SDL_Window->BorderTop);
 		}
 		else
 		{
@@ -1552,7 +1399,7 @@ static void CGX_VideoQuit(_THIS)
 	/* Shutdown everything that's still up */
 	/* The event thread should be done, so we can touch SDL_Display */
 	D(bug("CGX_VideoQuit\n"));
-    
+
 	if ( SDL_Display != NULL ) {
 		/* Clean up OpenGL */
 		if(this->gl_data->gl_active == 1) {
@@ -1611,4 +1458,4 @@ static void CGX_VideoQuit(_THIS)
 	D(bug("End of CGX_VideoQuit.\n"));
 
 }
- 
+

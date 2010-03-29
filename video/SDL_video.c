@@ -509,9 +509,15 @@ static void SDL_ClearSurface(SDL_Surface *surface)
 		SDL_Flip(surface);
 		SDL_FillRect(surface, NULL, black);
 	}
-	if (surface->flags&SDL_FULLSCREEN) {
+#ifdef	__AMIGA__
+	//if (surface->flags&SDL_FULLSCREEN) {
+		SDL_Flip(surface);
+	//}
+#else 
+    if (surface->flags&SDL_FULLSCREEN) {
 		SDL_Flip(surface);
 	}
+#endif
 }
 
 /*
@@ -588,6 +594,8 @@ SDL_Surface * SDL_SetVideoMode (int width, int height, int bpp, Uint32 flags)
 	SDL_GrabMode saved_grab;
 #ifdef __AMIGA__
     flags &= ~SDL_DOUBLEBUF;
+    if (getenv("SDL_HWSURFACE"))flags |= SDL_HWSURFACE ;
+	if (getenv("SDL_SWSURFACE"))flags &= ~SDL_HWSURFACE ;
 #endif
 	/* Start up the video driver, if necessary..
 	   WARNING: This is the only function protected this way!
