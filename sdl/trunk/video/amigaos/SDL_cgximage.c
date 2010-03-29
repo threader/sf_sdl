@@ -233,7 +233,11 @@ int CGX_SetupImage(_THIS, SDL_Surface *screen)
 		if (AvailMem(MEMF_LARGEST) < (screen->w * screen->h * (this->hidden->depth /8) + 500000))
 		{return -1;
 		}
-		if (!(this->hidden->bmap=AllocBitMap(screen->w,screen->h,this->hidden->depth,format,friendbmap)))return -1;
+		if (!(this->hidden->bmap=AllocBitMap(screen->w,screen->h,this->hidden->depth,format,friendbmap)))
+		   {
+			format &= ~BMF_DISPLAYABLE;	
+			if (!(this->hidden->bmap=AllocBitMap(screen->w,screen->h,this->hidden->depth,format,friendbmap)))return -1;	
+		   }
         screen->hwdata->bmap = this->hidden->bmap;
 		if(!(screen->hwdata->lock=LockBitMapTags(screen->hwdata->bmap,
 				LBMI_BASEADDRESS,(ULONG)&screen->pixels,
