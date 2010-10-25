@@ -10,7 +10,22 @@ All needed files are in lib dir.
 In bin dir are the files that are need that a configure script detect SDL correct with pkgconfig.copy the files to your bin path.
 when you do crosscompile and have more compilers, be careful i dont know a way how more than 1 pkgconfig can work together.
 
+build of sdl_noixemul:
+
+activate in thread/amigaos/sdl_systhread.c the line 
+#define NOIXEMUL
+
+
+
 -----------------------------
+
+SDL1.2.14c
+
+toggle fullscreen clear now window/screen correct
+
+SDL 1.2.14b
+
+on window mode when SDL Window is open or resize it is now clear with black (do not work in before version)
 
 SDL1.2.14
 

@@ -1354,22 +1354,27 @@ static int CGX_ToggleFullScreen(_THIS, int on)
 	}
 	if ( event_thread ) {
 		SDL_Lock_EventThread();
-	}
+	} 
 	if ( on ) {
 		this->screen->flags |= SDL_FULLSCREEN;
+		
 		CGX_EnterFullScreen(this);
+		SDL_SetVideoMode(this->screen->w - this->offset_x, this->screen->h - this->offset_y,this->hidden->depth,this->screen->flags);
+		//SDL_FillRect(this->screen, NULL, 0);
 	} else {
 		this->screen->flags &= ~SDL_FULLSCREEN;
 		CGX_LeaveFullScreen(this);
+		SDL_SetVideoMode(this->screen->w , this->screen->h,this->hidden->depth , this->screen->flags);
+
 	}
 
 	CGX_RefreshDisplay(this);
 	if ( event_thread ) {
 		SDL_Unlock_EventThread();
 	}
-
+    
 	SDL_ResetKeyboard();
-
+   
 	return(1);
 }
 
