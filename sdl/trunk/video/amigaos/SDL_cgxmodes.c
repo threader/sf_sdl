@@ -78,8 +78,8 @@ static void set_best_resolution(_THIS, int width, int height)
 
 static void get_real_resolution(_THIS, int* w, int* h)
 {
-    *w = /*SDL_Display->Width*/ SDL_Window->Width/*-SDL_Window->BorderLeft-SDL_Window->BorderRight*/;
-    *h = /*SDL_Display->Height*/ SDL_Window->Height/*-SDL_Window->BorderBottom-SDL_Window->BorderTop*/;
+    *w = /*SDL_Display->Width*/ SDL_Window->Width-SDL_Window->BorderLeft-SDL_Window->BorderRight;
+    *h = /*SDL_Display->Height*/ SDL_Window->Height-SDL_Window->BorderBottom-SDL_Window->BorderTop;
 }
 
 static void move_cursor_to(_THIS, int x, int y)

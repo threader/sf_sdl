@@ -28,7 +28,7 @@
 
 
 /* This is global for SDL_eventloop.c */
-int SDL_PrivateExpose(void)
+int SDL_PrivateExpose(void) 
 {
 	int posted;
 	SDL_Event events[32];

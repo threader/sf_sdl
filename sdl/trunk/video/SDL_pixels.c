@@ -375,7 +375,7 @@ Uint32 SDL_MapRGBA
 	} else {
 		return SDL_FindColor(format->palette, r, g, b);
 	}}
-
+ 
 void SDL_GetRGBA(Uint32 pixel, const SDL_PixelFormat *fmt,
 		 Uint8 *r, Uint8 *g, Uint8 *b, Uint8 *a)
 {
